@@ -2,806 +2,234 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>数据监察看板 - 客观执行差异率</title>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仓储质检数据监察看板</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-            --bg-body: #f0f2f6;
-            --bg-card: #ffffff;
-            --text-primary: #1e293b;
-            --text-secondary: #475569;
-            --border-color: #e2e8f0;
-            --kpi-bg: #f8fafc;
-            --header-bg: #ffffff;
-            --btn-bg: #3b82f6;
-            --btn-hover: #2563eb;
-            --shadow: 0 4px 12px rgba(0,0,0,0.05);
-            --table-header-bg: #f1f5f9;
-            --table-hover: #fef9e3;
-            --high-diff-bg: #fee2e2;
-            --high-diff-text: #b91c1c;
-            --chart-text: #1e293b;
-            --scrollbar-track: #e2e8f0;
-            --scrollbar-thumb: #94a3b8;
-            --modal-overlay: rgba(0,0,0,0.5);
-        }
-        body.dark {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --border-color: #334155;
-            --kpi-bg: #334155;
-            --header-bg: #1e293b;
-            --btn-bg: #2563eb;
-            --btn-hover: #3b82f6;
-            --shadow: 0 4px 12px rgba(0,0,0,0.3);
-            --table-header-bg: #334155;
-            --table-hover: #2d3748;
-            --high-diff-bg: #7f1a1a;
-            --high-diff-text: #fecaca;
-            --chart-text: #f1f5f9;
-            --scrollbar-track: #1e293b;
-            --scrollbar-thumb: #475666;
-            --modal-overlay: rgba(0,0,0,0.7);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
         }
         body {
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            background: var(--bg-body);
-            padding: 24px;
-            color: var(--text-primary);
-            transition: background 0.3s, color 0.2s;
-        }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--header-bg);
-            border-radius: 28px;
-            padding: 12px 24px;
-            margin-bottom: 24px;
-            box-shadow: var(--shadow);
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        .title-area h2 { font-size: 1.5rem; margin-bottom: 4px; }
-        .title-area p { display: none; }
-        .theme-btn {
-            background: var(--kpi-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 40px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: 0.2s;
-            color: var(--text-primary);
-        }
-        .theme-btn:hover { opacity: 0.8; }
-        .upload-btn {
-            background: var(--btn-bg);
-            color: white;
-            border: none;
-            border-radius: 40px;
-            padding: 8px 20px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: 0.2s;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        }
-        .upload-btn:hover { background: var(--btn-hover); transform: translateY(-1px); }
-        .upload-btn .btn-sub { font-size: 10px; opacity: 0.9; margin-left: 4px; }
-        .card {
-            background: var(--bg-card);
-            border-radius: 20px;
-            box-shadow: var(--shadow);
-            padding: 20px 24px;
-            margin-bottom: 24px;
-            transition: background 0.3s, box-shadow 0.3s;
-        }
-        .card-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 18px;
-            border-left: 5px solid #3b82f6;
-            padding-left: 14px;
-            color: var(--text-primary);
-        }
-        .sticky-filter {
-            position: sticky;
-            top: 0;
-            background: var(--bg-card);
-            z-index: 100;
-            margin-bottom: 24px;
-            border-radius: 20px;
-            box-shadow: var(--shadow);
-            transition: all 0.3s ease;
-        }
-        .sticky-filter.compact .card { padding: 8px 20px; }
-        .sticky-filter.compact .card-title { font-size: 15px; margin-bottom: 8px; }
-        .sticky-filter.compact .filter-bar { margin-bottom: 0; }
-        .kpi-grid, .stats-grid {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 8px;
-        }
-        .kpi-item, .stats-item {
-            flex: 1;
-            min-width: 130px;
-            background: var(--kpi-bg);
-            border-radius: 24px;
-            padding: 16px 12px;
-            text-align: center;
-            border: 1px solid var(--border-color);
-        }
-        .kpi-number, .stats-number {
-            font-size: 30px;
-            font-weight: 800;
-            color: #3b82f6;
-            line-height: 1.2;
-        }
-        .kpi-label, .stats-label {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 8px;
-        }
-        .filter-bar {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-            align-items: flex-end;
-            margin-bottom: 20px;
-        }
-        .filter-item {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .filter-item label {
-            font-weight: 600;
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-        .filter-item select, .filter-item input {
-            width: 150px;
-            padding: 8px 12px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-card);
-            color: var(--text-primary);
-            font-size: 14px;
-        }
-        .filter-item button {
-            background: var(--btn-bg);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 8px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: 0.2s;
-            min-width: 90px;
-        }
-        .filter-item button:hover {
-            background: var(--btn-hover);
-        }
-        .chart-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; }
-        .chart-box { flex: 1; min-width: 280px; height: 360px; }
-        
-        .obj-rank-wrapper {
-            flex: 1.2;
-            min-width: 280px;
-            display: flex;
-            flex-direction: column;
-        }
-        .obj-rank-scroll {
-            max-height: 440px;
-            overflow-y: auto;
-            border-radius: 16px;
-            border: 1px solid var(--border-color);
-            scrollbar-width: thin;
-        }
-        .obj-rank-scroll::-webkit-scrollbar { width: 6px; }
-        .obj-rank-scroll::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 8px; }
-        .obj-rank-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 8px; }
-        .obj-rank-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-            min-width: 260px;
-        }
-        .obj-rank-table th, .obj-rank-table td {
-            border: 1px solid var(--border-color);
-            padding: 10px 8px;
-            text-align: center;
-            white-space: nowrap;
-        }
-        .obj-rank-table th {
-            background: var(--table-header-bg);
-            font-weight: 700;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .obj-rank-table tr:hover { background: var(--table-hover); cursor: pointer; }
-        .obj-rank-table .rank-1 { background-color: #fde8e8 !important; }
-        .obj-rank-table .rank-2 { background-color: #e8f5e9 !important; }
-        .obj-rank-table .rank-3 { background-color: #e6f2ff !important; }
-        body.dark .obj-rank-table .rank-1 { background-color: #7f4a4a !important; }
-        body.dark .obj-rank-table .rank-2 { background-color: #2d5a2d !important; }
-        body.dark .obj-rank-table .rank-3 { background-color: #2c4c6b !important; }
-        .reset-hint {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 12px;
-            text-align: center;
-            cursor: pointer;
-            padding: 6px 16px;
-            border-radius: 30px;
-            background: var(--kpi-bg);
-            transition: 0.2s;
-            width: fit-content;
-            align-self: center;
-        }
-        .reset-hint:hover {
-            background: var(--border-color);
-            color: #3b82f6;
-        }
-        
-        .rank-table, .detail-table, .ranking-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        .rank-table th, .rank-table td, .detail-table th, .detail-table td, .ranking-table th, .ranking-table td {
-            border: 1px solid var(--border-color);
-            padding: 6px 10px;
-            text-align: center;
-            vertical-align: middle;
-            white-space: nowrap;
-            color: var(--text-primary);
-        }
-        .rank-table th {
-            background: var(--table-header-bg);
-            font-weight: 600;
-        }
-        .rank-table tr:hover { background: var(--table-hover); }
-        .high-diff { color: var(--high-diff-text) !important; font-weight: 600; }
-        .file-input-hidden { display: none; }
-        .footer-note {
-            font-size: 12px;
-            color: var(--text-secondary);
-            text-align: center;
-            margin-top: 20px;
-        }
-        .two-col { display: flex; gap: 24px; flex-wrap: wrap; }
-        .two-col > div { flex: 1; min-width: 280px; }
-        .load-more-btn {
-            text-align: center;
-            margin-top: 16px;
-            padding: 8px;
-            background: var(--kpi-bg);
-            border-radius: 40px;
-            cursor: pointer;
-            font-size: 13px;
-            color: #3b82f6;
-        }
-        .load-more-btn:hover { background: var(--border-color); }
-        .right-buttons { display: flex; align-items: center; gap: 12px; }
-        .clickable-row { cursor: pointer; }
-        .note-text {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 12px;
-            text-align: center;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--modal-overlay);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background: var(--bg-card);
-            border-radius: 24px;
-            width: 90%;
-            max-width: 1200px;
-            max-height: 80vh;
-            overflow: auto;
+            background: #0b1220;
+            color: #fff;
             padding: 20px;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.3);
-            animation: fadeInUp 0.3s ease;
         }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border-color);
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
         }
-        .close-modal {
+        .header h1 {
+            font-size: 28px;
+            color: #00eaff;
+            text-shadow: 0 0 10px #00eaff;
+        }
+        .load-btn {
+            position: absolute;
+            right: 20px;
+            top: 0;
+            background: #00eaff;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
             cursor: pointer;
+            font-weight: bold;
+        }
+        .load-btn:hover {
+            background: #0099aa;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        .card {
+            background: #121a2b;
+            border: 1px solid #1e2a3a;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 10px rgba(0,234,255,0.1);
+        }
+        .card h3 {
+            color: #00eaff;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .number {
             font-size: 24px;
             font-weight: bold;
-            color: var(--text-secondary);
+            color: #fff;
         }
-        .modal-filter-bar {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-            align-items: flex-end;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .modal-filter-item {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .modal-filter-item label {
-            font-weight: 600;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        .modal-filter-item select {
-            width: 130px;
-            padding: 6px 10px;
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-card);
-            color: var(--text-primary);
-            font-size: 12px;
-        }
-        .modal-table {
+        table {
             width: 100%;
             border-collapse: collapse;
             font-size: 12px;
         }
-        .modal-table th, .modal-table td {
-            border: 1px solid var(--border-color);
-            padding: 8px 6px;
-            text-align: left;
-            vertical-align: top;
-        }
-        .modal-table th {
-            background: var(--table-header-bg);
-            position: sticky;
-            top: 0;
-        }
-        .back-to-chart {
-            margin-top: 12px;
+        th, td {
+            border: 1px solid #1e2a3a;
+            padding: 6px;
             text-align: center;
-            cursor: pointer;
-            color: #3b82f6;
-            font-size: 12px;
         }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in { animation: fadeInUp 0.3s ease forwards; }
-        .right-chart-container {
-            flex: 1;
-            min-width: 280px;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-        }
-        #personPieChart, #pieChart {
-            width: 100%;
-            height: 360px;
+        th {
+            background: #1a2435;
+            color: #00eaff;
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="top-bar">
-        <div class="title-area">
-            <h2>📋 数据监察看板</h2>
-        </div>
-        <div class="right-buttons">
-            <button id="themeToggleBtn" class="theme-btn">🌙 夜间模式</button>
-            <button id="uploadCombinedBtn" class="upload-btn">📂 上传数据<span class="btn-sub">(周汇总表+差异明细表)</span></button>
-        </div>
-        <input type="file" id="combinedFileInput" class="file-input-hidden" accept=".xlsx, .xls" multiple>
+    <div class="header">
+        <h1>仓储质检数据监察看板</h1>
+        <button class="load-btn" onclick="loadRemoteData()">加载数据</button>
     </div>
 
-    <div class="sticky-filter" id="stickyFilter">
+    <div class="grid">
         <div class="card">
-            <div class="card-title">🔍 筛选器</div>
-            <div class="filter-bar">
-                <div class="filter-item"><label>🏚️ 中心仓</label><select id="warehouseFilter"><option value="__ALL__">全部中心仓</option></select></div>
-                <div class="filter-item"><label>🔎 质检人员关键字</label><input type="text" id="personKeyword" placeholder="姓名关键字"></div>
-                <div class="filter-item"><label>👤 质检人员</label><select id="personFilter"><option value="__ALL__">全部质检人员</option></select></div>
-                <div class="filter-item"><label>📌 主客观项</label><select id="subjObjFilter"><option value="ALL">全部</option><option value="OBJ">客观</option><option value="SUBJ">主观</option></select></div>
-                <div class="filter-item"><label>⚠️ 问题类型</label><select id="issueTypeFilter"><option value="__ALL__">全部问题类型</option></select></div>
-                <div class="filter-item"><label>🔖 抽检判定类型</label><select id="judgedIssueTypeFilter"><option value="__ALL__">全部</option></select></div>
-                <div class="filter-item"><button id="resetFilter">重置筛选</button></div>
+            <h3>总质检单量</h3>
+            <div id="totalCount" class="number">0</div>
+        </div>
+        <div class="card">
+            <h3>差异单量</h3>
+            <div id="diffCount" class="number">0</div>
+        </div>
+        <div class="card">
+            <h3>差异率</h3>
+            <div id="diffRate" class="number">0%</div>
+        </div>
+
+        <div class="card" style="grid-column: span 3;">
+            <h3>站点差异排名 TOP10</h3>
+            <div style="height:300px;">
+                <canvas id="rankChart"></canvas>
             </div>
+        </div>
+
+        <div class="card" style="grid-column: span 3;">
+            <h3>差异明细</h3>
+            <div id="diffTable"></div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-title">📈 抽检指标详情（QA抽检差异数据 & 客观执行差异率）</div>
-        <div class="stats-grid" id="statsArea"></div>
-        <div class="note-text">※ 抽检差异率、客观/主观差异率基于“周汇总表”；客观执行抽检差异率基于“差异明细表”：客观问题且抽检判定类型为“执行问题”的去重设备数 / 抽检总量。</div>
-    </div>
+    <script>
+        // 远程文件地址（你的 GitHub 仓库）
+        const SUMMARY_URL = "https://raw.githubusercontent.com/vip-rui/-/main/周汇总表.xlsx";
+        const DIFF_URL = "https://raw.githubusercontent.com/vip-rui/-/main/差异明细表.xlsx";
 
-    <div class="card">
-        <div class="card-title">📈 可视化洞察 · 中心仓客观执行差异率排行</div>
-        <div class="chart-row">
-            <div class="obj-rank-wrapper">
-                <div class="obj-rank-scroll" id="objRankScroll">
-                    <table class="obj-rank-table" id="objRankTable">
-                        <thead><tr><th>排名</th><th>站点名称</th><th>客观抽检差异率</th></tr></thead>
-                        <tbody id="objRankBody"><tr><td colspan="3">加载数据中......</td></tr></tbody>
-                    </table>
-                </div>
-                <div class="reset-hint" id="resetViewHint">✨ 点击此处 重置筛选</div>
-            </div>
-            <div id="barChart" class="chart-box"></div>
-            <div class="right-chart-container">
-                <div id="pieChartWrapper"><div id="pieChart"></div></div>
-                <div id="personPieWrapper" style="display:none;"><div id="personPieChart"></div><div class="back-to-chart" id="backToChartBtn">← 返回图表</div></div>
-            </div>
-        </div>
-    </div>
+        let rankChart = null;
 
-    <div class="card">
-        <div class="card-title">📊 核心监察指标 <span id="filterHint" style="font-size:13px;"></span></div>
-        <div class="kpi-grid" id="kpiArea"><div class="kpi-item"><div class="kpi-number">-</div><div class="kpi-label">总差异次数</div></div></div>
-    </div>
+        // 点击按钮：自动加载你上传的 Excel
+        async function loadRemoteData() {
+            alert("正在加载最新数据，请稍候...");
+            
+            try {
+                // 下载并解析汇总表
+                const summaryRes = await fetch(SUMMARY_URL);
+                const summaryBlob = await summaryRes.blob();
+                const summaryWorkbook = await readExcelBlob(summaryBlob);
+                
+                // 下载并解析差异表
+                const diffRes = await fetch(DIFF_URL);
+                const diffBlob = await diffRes.blob();
+                const diffWorkbook = await readExcelBlob(diffBlob);
 
-    <div class="card">
-        <div class="card-title">👤 质检人员排名 (前20名) <span id="personRankHint" style="font-size:13px;"></span></div>
-        <div style="overflow-x: auto;"><table class="rank-table" id="personTable"><thead><tr><th>排名</th><th>质检人员</th><th>总差异次数</th><th>客观次数</th><th>主观次数</th><th>所属中心仓</th></tr></thead><tbody id="personTableBody"></tbody></table></div>
-    </div>
-
-    <div class="card">
-        <div class="card-title">📋 差异明细 <span id="detailHint" style="font-size:13px;"></span></div>
-        <div style="overflow-x: auto;"><table class="detail-table" id="detailTable"><thead><tr><th>日期</th><th>中心仓</th><th>质检码</th><th>一级项</th><th>二级项</th><th>三级项</th><th>主客观分类</th><th>问题类型</th><th>抽检判定类型</th><th>质检人员</th><th>QA抽检人</th></tr></thead><tbody id="detailTableBody"></tbody></table></div>
-        <div id="loadMoreBtn" class="load-more-btn" style="display: none;">显示更多</div>
-    </div>
-
-    <div class="card">
-        <div class="card-title">🏆 客观问题排行榜 (TOP8)</div>
-        <div class="two-col">
-            <div><h4 style="margin-bottom:12px;">📱 高差异型号 (TOP8)</h4><table class="ranking-table" id="modelRankTable"><thead><tr><th>排名</th><th>型号名称</th><th>客观差异次数</th></tr></thead><tbody id="modelRankBody"></tbody></table></div>
-            <div><h4 style="margin-bottom:12px;"><span style="color: #dc2626;">⚠️</span> 高差异问题（三级项） (TOP8)</h4><table class="ranking-table" id="issueRankTable"><thead><tr><th>排名</th><th>三级项名称</th><th>客观差异次数</th></tr></thead><tbody id="issueRankBody"></tbody></table></div>
-        </div>
-    </div>
-    <div class="footer-note">※ 点击图表可查看明细，相同质检码自动高亮，支持暗黑模式。</div>
-
-    <div id="detailModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modalTitle">差异明细</h3>
-                <span class="close-modal">&times;</span>
-            </div>
-            <div class="modal-filter-bar">
-                <div class="modal-filter-item"><label>⚠️ 问题类型</label><select id="modalIssueTypeFilter"><option value="__ALL__">全部问题类型</option></select></div>
-                <div class="modal-filter-item"><label>🔖 抽检判定类型</label><select id="modalJudgedIssueTypeFilter"><option value="__ALL__">全部</option></select></div>
-                <div class="modal-filter-item"><button id="modalResetFilter" style="padding:4px 12px; font-size:12px;">重置筛选</button></div>
-            </div>
-            <div id="modalBody" style="max-height: 50vh; overflow-y: auto;"></div>
-        </div>
-    </div>
-</div>
-
-<script>
-    (function() {
-        const themeBtn = document.getElementById('themeToggleBtn');
-        const isDark = localStorage.getItem('darkMode') === 'true';
-        if (isDark) { document.body.classList.add('dark'); themeBtn.innerHTML = '☀️ 日间模式'; } 
-        else { themeBtn.innerHTML = '🌙 夜间模式'; }
-        themeBtn.addEventListener('click', () => {
-            const dark = document.body.classList.toggle('dark');
-            localStorage.setItem('darkMode', dark);
-            themeBtn.innerHTML = dark ? '☀️ 日间模式' : '🌙 夜间模式';
-            if (window.fullRefresh) fullRefresh();
-        });
-
-        let diffData = [];
-        let summaryData = [];
-        let warehouseSet = new Set();
-        let allPersonSet = new Set();
-        let allIssueTypes = new Set();
-        let allJudgedIssueTypes = new Set();
-        let barChart = null, globalPieChart = null, personPieChart = null;
-        let currentFilteredDiff = [];
-        let detailDisplayLimit = 20, detailCurrentOffset = 0;
-        let showingPersonView = false;
-        let currentModalRecords = [];
-
-        const warehouseFilter = document.getElementById('warehouseFilter');
-        const personKeyword = document.getElementById('personKeyword');
-        const personFilter = document.getElementById('personFilter');
-        const subjObjFilter = document.getElementById('subjObjFilter');
-        const issueTypeFilter = document.getElementById('issueTypeFilter');
-        const judgedIssueTypeFilter = document.getElementById('judgedIssueTypeFilter');
-        const resetBtn = document.getElementById('resetFilter');
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-        const resetViewHint = document.getElementById('resetViewHint');
-
-        function isObjective(cat) { return cat && String(cat).toLowerCase().includes('客观') && !String(cat).toLowerCase().includes('主观'); }
-        function isSubjective(cat) { return cat && String(cat).toLowerCase().includes('主观'); }
-
-        function getCodeBgColor(code, isDarkMode) {
-            if (!code) return 'transparent';
-            let hash = 0;
-            for (let i = 0; i < code.length; i++) {
-                hash = ((hash << 5) - hash) + code.charCodeAt(i);
-                hash |= 0;
+                // 渲染数据
+                renderData(summaryWorkbook, diffWorkbook);
+                alert("数据加载完成！");
+            } catch (e) {
+                alert("加载失败：" + e.message);
             }
-            const hue = Math.abs(hash % 360);
-            return isDarkMode ? `hsl(${hue}, 40%, 30%)` : `hsl(${hue}, 50%, 85%)`;
         }
 
-        function renderDetailTable() {
-            const total = currentFilteredDiff.length;
-            const endIndex = Math.min(detailCurrentOffset + detailDisplayLimit, total);
-            const slice = currentFilteredDiff.slice(0, endIndex);
-            const codeCount = new Map();
-            slice.forEach(d => { if (d.code) codeCount.set(d.code, (codeCount.get(d.code) || 0) + 1); });
-            const isDarkMode = document.body.classList.contains('dark');
-            const html = slice.map(d => {
-                let bg = d.code && codeCount.get(d.code) >= 2 ? getCodeBgColor(d.code, isDarkMode) : 'transparent';
-                return `<tr style="background:${bg};">${['date','warehouse','code','level1','level2','level3','category','issueType','judgedIssueType','person','qaInspector'].map(k => `<td>${d[k] || '-'}</td>`).join('')}</tr>`;
-            }).join('');
-            document.getElementById('detailTableBody').innerHTML = html;
-            document.getElementById('detailHint').innerText = `(共 ${total} 条，已显示 ${endIndex} 条)`;
-            loadMoreBtn.style.display = endIndex < total ? 'block' : 'none';
-        }
-
-        function renderModalTable() {
-            const filtered = filterModalRecords();
-            if (!filtered.length) { modalBody.innerHTML = '<div style="padding:20px;text-align:center;">无匹配记录</div>'; return; }
-            const codeCount = new Map();
-            filtered.forEach(rec => { if (rec.code) codeCount.set(rec.code, (codeCount.get(rec.code) || 0) + 1); });
-            const isDarkMode = document.body.classList.contains('dark');
-            let tableHtml = `<table class="modal-table"><thead><tr><th>一级项</th><th>二级项</th><th>三级项</th><th>主客观分类</th><th>问题类型</th><th>抽检判定类型</th><th>中心仓</th><th>质检码</th></tr></thead><tbody>`;
-            filtered.forEach(rec => {
-                let bg = rec.code && codeCount.get(rec.code) >= 2 ? getCodeBgColor(rec.code, isDarkMode) : 'transparent';
-                tableHtml += `<tr style="background:${bg};"><td>${rec.level1 || '-'}</td><td>${rec.level2 || '-'}</td><td>${rec.level3 || '-'}</td><td>${rec.category || '-'}</td><td>${rec.issueType || '-'}</td><td>${rec.judgedIssueType || '-'}</td><td>${rec.warehouse || '-'}</td><td>${rec.code || '-'}</td></tr>`;
-            });
-            tableHtml += `</tbody></table>`;
-            document.getElementById('modalBody').innerHTML = tableHtml;
-        }
-
-        function filterModalRecords() {
-            let filtered = [...currentModalRecords];
-            const issue = document.getElementById('modalIssueTypeFilter').value;
-            if (issue !== '__ALL__') filtered = filtered.filter(d => d.issueType === issue);
-            const judged = document.getElementById('modalJudgedIssueTypeFilter').value;
-            if (judged !== '__ALL__') filtered = filtered.filter(d => d.judgedIssueType === judged);
-            return filtered;
-        }
-
-        function showDetailModal(personName, records, type = 'all') {
-            let filteredRecords = [...records];
-            let titleSuffix = type === 'objective' ? '客观差异' : type === 'subjective' ? '主观差异' : '全部差异';
-            if (type === 'objective') filteredRecords = records.filter(r => isObjective(r.category));
-            if (type === 'subjective') filteredRecords = records.filter(r => isSubjective(r.category));
-            currentModalRecords = filteredRecords;
-            document.getElementById('modalTitle').innerText = `${personName} 的${titleSuffix}明细（共 ${filteredRecords.length} 条）`;
-            updateModalFilterOptions();
-            document.getElementById('modalIssueTypeFilter').value = '__ALL__';
-            document.getElementById('modalJudgedIssueTypeFilter').value = '__ALL__';
-            renderModalTable();
-            document.getElementById('detailModal').style.display = 'flex';
-        }
-
-        function updateModalFilterOptions() {
-            const issueSet = new Set(), judgedSet = new Set();
-            currentModalRecords.forEach(rec => { if (rec.issueType) issueSet.add(rec.issueType); if (rec.judgedIssueType) judgedSet.add(rec.judgedIssueType); });
-            document.getElementById('modalIssueTypeFilter').innerHTML = '<option value="__ALL__">全部问题类型</option>' + Array.from(issueSet).sort().map(t=>`<option value="${t}">${t}</option>`).join('');
-            document.getElementById('modalJudgedIssueTypeFilter').innerHTML = '<option value="__ALL__">全部</option>' + Array.from(judgedSet).sort().map(t=>`<option value="${t}">${t}</option>`).join('');
-        }
-
-        function showPersonPieChart(personName) {
-            const personRecords = currentFilteredDiff.filter(d => d.person === personName);
-            if (!personRecords.length) return;
-            const objCount = personRecords.filter(r=>isObjective(r.category)).length;
-            const subjCount = personRecords.filter(r=>isSubjective(r.category)).length;
-            if (!personPieChart) personPieChart = echarts.init(document.getElementById('personPieChart'));
-            personPieChart.setOption({
-                title: { text: `${personName} 差异分布`, left: 'center', textStyle: { color: getComputedStyle(document.body).getPropertyValue('--chart-text') } },
-                tooltip: { trigger: 'item' },
-                series: [{ type: 'pie', radius: '55%', data: [{name:'客观',value:objCount},{name:'主观',value:subjCount}] }]
-            });
-            personPieChart.off('click');
-            personPieChart.on('click', p => showDetailModal(personName, personRecords, p.name === '客观' ? 'objective' : 'subjective'));
-            document.getElementById('pieChartWrapper').style.display = 'none';
-            document.getElementById('personPieWrapper').style.display = 'block';
-            showingPersonView = true;
-        }
-
-        function updateGlobalPie() {
-            if (!globalPieChart) globalPieChart = echarts.init(document.getElementById('pieChart'));
-            const whMap = new Map();
-            currentFilteredDiff.forEach(d => whMap.set(d.warehouse, (whMap.get(d.warehouse)||0)+1));
-            globalPieChart.setOption({
-                title: { text: '各中心仓总差异占比', left: 'center', textStyle: { color: getComputedStyle(document.body).getPropertyValue('--chart-text') } },
-                series: [{ type: 'pie', radius: '55%', data: Array.from(whMap.entries()).map(([n,v])=>({name:n,value:v})) }]
+        // 读取 Excel
+        function readExcelBlob(blob) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    resolve(workbook);
+                };
+                reader.readAsArrayBuffer(blob);
             });
         }
 
-        function resetToGlobalPie() {
-            showingPersonView = false;
-            document.getElementById('personPieWrapper').style.display = 'none';
-            document.getElementById('pieChartWrapper').style.display = 'block';
-            updateGlobalPie();
+        // 渲染看板
+        function renderData(summaryWB, diffWB) {
+            const summarySheet = summaryWB.Sheets[summaryWB.SheetNames[0]];
+            const summaryData = XLSX.utils.sheet_to_json(summarySheet);
+            
+            const diffSheet = diffWB.Sheets[diffWB.SheetNames[0]];
+            const diffData = XLSX.utils.sheet_to_json(diffSheet);
+
+            // 计算核心数字
+            const total = summaryData.reduce((sum, row) => sum + (row.总单量 || 0), 0);
+            const diffTotal = diffData.length;
+            const rate = total > 0 ? ((diffTotal / total) * 100).toFixed(2) : 0;
+
+            document.getElementById("totalCount").innerText = total;
+            document.getElementById("diffCount").innerText = diffTotal;
+            document.getElementById("diffRate").innerText = rate + "%";
+
+            // 排名图表
+            renderRankChart(summaryData);
+            
+            // 差异表格
+            renderDiffTable(diffData);
         }
 
-        function filterDiffData() {
-            let f = [...diffData];
-            const wh = warehouseFilter.value;
-            if(wh!=='__ALL__') f=f.filter(d=>d.warehouse===wh);
-            const p=personFilter.value;
-            if(p!=='__ALL__') f=f.filter(d=>d.person===p);
-            const m=subjObjFilter.value;
-            if(m==='OBJ') f=f.filter(d=>isObjective(d.category));
-            if(m==='SUBJ') f=f.filter(d=>isSubjective(d.category));
-            const it=issueTypeFilter.value;
-            if(it!=='__ALL__') f=f.filter(d=>d.issueType===it);
-            const jt=judgedIssueTypeFilter.value;
-            if(jt!=='__ALL__') f=f.filter(d=>d.judgedIssueType===jt);
-            return f;
-        }
+        // 排名图
+        function renderRankChart(data) {
+            const sorted = [...data].sort((a, b) => (b.差异单量 || 0) - (a.差异单量 || 0)).slice(0, 10);
+            const labels = sorted.map(i => i.站点名称 || "未知");
+            const values = sorted.map(i => i.差异单量 || 0);
 
-        function fullRefresh() {
-            if(!diffData.length) return;
-            currentFilteredDiff = filterDiffData().sort((a,b)=> (a.date||'').localeCompare(b.date||''));
-            detailCurrentOffset=0;
-            const total=currentFilteredDiff.length, obj=currentFilteredDiff.filter(isObjective).length, subj=currentFilteredDiff.filter(isSubjective).length;
-            document.getElementById('kpiArea').innerHTML=`<div class="kpi-item"><div class="kpi-number">${total}</div><div class="kpi-label">总差异次数</div></div><div class="kpi-item"><div class="kpi-number">${obj}</div><div class="kpi-label">客观差异</div></div><div class="kpi-item"><div class="kpi-number">${subj}</div><div class="kpi-label">主观差异</div></div>`;
-            resetToGlobalPie();
-            refreshCharts();
-            renderDetailTable();
-            updateStatsBoard();
-            renderObjWarehouseRanking();
-        }
-
-        function refreshCharts() {
-            const personMap = new Map();
-            currentFilteredDiff.forEach(d=>{
-                const k=`${d.person}|${d.warehouse}`;
-                if(!personMap.has(k)) personMap.set(k,{person:d.person,warehouse:d.warehouse,t:0,o:0,s:0});
-                const i=personMap.get(k); i.t++;
-                if(isObjective(d.category)) i.o++;
-                if(isSubjective(d.category)) i.s++;
-            });
-            const list=Array.from(personMap.values()).sort((a,b)=>b.t-a.t);
-            document.getElementById('personTableBody').innerHTML=list.slice(0,20).map((p,i)=>`<tr><td>${i+1}</td><td class="${p.t>=10?'high-diff':''}">${p.person}</td><td>${p.t}</td><td>${p.o}</td><td>${p.s}</td><td>${p.warehouse}</td></tr>`).join('');
-            const top8=list.slice(0,8);
-            if(!barChart) barChart=echarts.init(document.getElementById('barChart'));
-            barChart.setOption({
-                xAxis:{data:top8.map(p=>p.person)},
-                yAxis:{type:'value'},
-                series:[{type:'bar',data:top8.map(p=>p.t)}]
-            });
-            barChart.off('click');
-            barChart.on('click',p=>showPersonPieChart(top8[p.dataIndex].person));
-            updateGlobalPie();
-        }
-
-        function updateStatsBoard() {
-            if(!summaryData.length) return;
-            let tc=0,td=0,od=0,sd=0;
-            summaryData.forEach(r=>{tc+=r.totalChecks||0; td+=r.diffDevices||0; od+=r.objDiffDevices||0; sd+=r.subjDiffDevices||0});
-            const dr=tc?(td/tc*100).toFixed(2):0;
-            const or=tc?(od/tc*100).toFixed(2):0;
-            const sr=tc?(sd/tc*100).toFixed(2):0;
-            document.getElementById('statsArea').innerHTML=`
-                <div class="stats-item"><div class="stats-number">${dr}%</div><div class="stats-label">抽检差异率</div></div>
-                <div class="stats-item"><div class="stats-number">${or}%</div><div class="stats-label">客观差异率</div></div>
-                <div class="stats-item"><div class="stats-number">${sr}%</div><div class="stats-label">主观差异率</div></div>
-                <div class="stats-item"><div class="stats-number">${tc}</div><div class="stats-label">抽检总量</div></div>
-            `;
-        }
-
-        function renderObjWarehouseRanking() {
-            if(!summaryData.length||!diffData.length) return;
-            const map=new Map();
-            summaryData.forEach(s=>map.set(s.siteName,s.totalChecks||0));
-            const codeSet=new Map();
-            diffData.forEach(d=>{
-                if(isObjective(d.category)&&d.code&&d.warehouse){
-                    if(!codeSet.has(d.warehouse)) codeSet.set(d.warehouse,new Set());
-                    codeSet.get(d.warehouse).add(d.code);
+            const ctx = document.getElementById("rankChart").getContext("2d");
+            if (rankChart) rankChart.destroy();
+            
+            rankChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '差异单量',
+                        data: values,
+                        backgroundColor: '#00eaff',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
                 }
             });
-            const arr=[];
-            map.forEach((tc,w)=>{
-                const cnt=codeSet.get(w)?codeSet.get(w).size:0;
-                arr.push({w,r:tc?(cnt/tc*100).toFixed(2):0});
-            });
-            arr.sort((a,b)=>b.r-a.r);
-            document.getElementById('objRankBody').innerHTML=arr.map((it,i)=>`<tr class="clickable-row" data-site="${it.w}"><td>${i+1}</td><td>${it.w}</td><td>${it.r}%</td></tr>`).join('');
         }
 
-        document.getElementById('backToChartBtn').onclick=resetToGlobalPie;
-        document.querySelector('.close-modal').onclick=()=>document.getElementById('detailModal').style.display='none';
-        document.getElementById('objRankTable').onclick=e=>{
-            const tr=e.target.closest('tr');
-            if(tr&&tr.dataset.site){
-                warehouseFilter.value=tr.dataset.site;
-                fullRefresh();
+        // 差异表格
+        function renderDiffTable(data) {
+            if (data.length === 0) {
+                document.getElementById("diffTable").innerHTML = "<p>暂无差异数据</p>";
+                return;
             }
-        };
-        resetViewHint.onclick=()=>{
-            warehouseFilter.value='__ALL__';
-            personFilter.value='__ALL__';
-            subjObjFilter.value='ALL';
-            fullRefresh();
-        };
-        loadMoreBtn.onclick=()=>{detailCurrentOffset+=detailDisplayLimit; renderDetailTable();};
 
-        const filesInput=document.getElementById('combinedFileInput');
-        document.getElementById('uploadCombinedBtn').onclick=()=>filesInput.click();
-        filesInput.onchange=e=>{
-            Array.from(e.target.files).forEach(f=>{
-                const r=new FileReader();
-                r.onload=ev=>{
-                    const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
-                    const data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                    if('质检码' in data[0]){
-                        diffData=data.map(r=>({
-                            warehouse:r['站点名称']||'',
-                            person:r['原操作人名称']||'',
-                            qaInspector:r['新操作人名称']||'',
-                            category:r['主客观问题分类']||'',
-                            date:r['日期']||'',
-                            level1:r['一级项名称']||'',
-                            level2:r['二级项名称']||'',
-                            level3:r['三级项名称']||'',
-                            issueType:r['问题类型']||'',
-                            judgedIssueType:r['抽检判定的问题类型']||'',
-                            code:r['质检码']||''
-                        }));
-                    }else{
-                        summaryData=data.map(r=>({
-                            siteName:r['站点名称']||'',
-                            totalChecks:r['总抽检量']||0,
-                            diffDevices:r['大盘有差异设备量']||0,
-                            objDiffDevices:r['大盘客观差异设备量']||0,
-                            subjDiffDevices:r['大盘主观差异设备量']||0
-                        }));
-                    }
-                    fullRefresh();
-                };
-                r.readAsArrayBuffer(f);
+            const headers = Object.keys(data[0]);
+            let html = "<table><tr>";
+            headers.forEach(h => html += `<th>${h}</th>`);
+            html += "</tr>";
+            
+            data.slice(0, 20).forEach(row => {
+                html += "<tr>";
+                headers.forEach(h => html += `<td>${row[h] || ''}</td>`);
+                html += "</tr>";
             });
-        };
-
-        warehouseFilter.onchange=fullRefresh;
-        personFilter.onchange=fullRefresh;
-        subjObjFilter.onchange=fullRefresh;
-        issueTypeFilter.onchange=fullRefresh;
-        judgedIssueTypeFilter.onchange=fullRefresh;
-        resetBtn.onclick=()=>{warehouseFilter.value='__ALL__'; personFilter.value='__ALL__'; subjObjFilter.value='ALL'; fullRefresh;};
-    })();
-</script>
+            
+            html += "</table>";
+            document.getElementById("diffTable").innerHTML = html;
+        }
+    </script>
 </body>
 </html>
