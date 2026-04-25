@@ -21,7 +21,6 @@
             --shadow: 0 4px 12px rgba(0,0,0,0.05);
             --table-header-bg: #f1f5f9;
             --table-hover: #fef9e3;
-            --high-diff-bg: #fee2e2;
             --high-diff-text: #b91c1c;
             --chart-text: #1e293b;
             --scrollbar-track: #e2e8f0;
@@ -41,7 +40,6 @@
             --shadow: 0 4px 12px rgba(0,0,0,0.3);
             --table-header-bg: #334155;
             --table-hover: #2d3748;
-            --high-diff-bg: #7f1a1a;
             --high-diff-text: #fecaca;
             --chart-text: #f1f5f9;
             --scrollbar-track: #1e293b;
@@ -178,16 +176,7 @@
             margin-bottom: 24px;
             border-radius: 20px;
             box-shadow: var(--shadow);
-            transition: all 0.3s ease;
         }
-        .sticky-filter .card { transition: padding 0.3s ease, margin 0.3s ease; }
-        .sticky-filter.compact .card { padding: 8px 20px; }
-        .sticky-filter.compact .card-title { font-size: 15px; margin-bottom: 8px; }
-        .sticky-filter.compact .filter-bar { margin-bottom: 0; }
-        .sticky-filter.compact .filter-item label { font-size: 11px; }
-        .sticky-filter.compact .filter-item select,
-        .sticky-filter.compact .filter-item input { padding: 4px 8px; font-size: 12px; width: 130px; }
-        .sticky-filter.compact .filter-item button { padding: 4px 12px; font-size: 12px; }
         .filter-bar {
             display: flex;
             gap: 16px;
@@ -259,8 +248,6 @@
         }
         .chart-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; }
         .chart-box { flex: 1; min-width: 280px; height: 360px; }
-        
-        /* 排名表格滚动区域 + 固定表头 */
         .obj-rank-wrapper {
             flex: 1.2;
             min-width: 280px;
@@ -332,7 +319,6 @@
             background: var(--border-color);
             color: #3b82f6;
         }
-        
         .rank-table, .detail-table, .ranking-table {
             width: 100%;
             border-collapse: collapse;
@@ -372,7 +358,6 @@
             color: #3b82f6;
         }
         .load-more-btn:hover { background: var(--border-color); }
-        .right-buttons { display: flex; align-items: center; gap: 12px; }
         .clickable-row { cursor: pointer; }
         .note-text {
             font-size: 12px;
@@ -380,8 +365,6 @@
             margin-top: 12px;
             text-align: center;
         }
-        
-        /* 弹窗模态框样式 */
         .modal {
             display: none;
             position: fixed;
@@ -552,7 +535,7 @@
                             </tr>
                         </thead>
                         <tbody id="objRankBody">
-                            <tr><td colspan="3">加载数据中...</td><tr>
+                            <tr><td colspan="3">加载数据中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -607,7 +590,6 @@
 
 <script>
     (function() {
-        // ==================== 密码验证 ====================
         const CORRECT_PASSWORD = 'zz1111';
         const overlay = document.getElementById('passwordOverlay');
         const mainContent = document.getElementById('mainContent');
@@ -634,9 +616,7 @@
             mainContent.style.display = 'block';
         }
 
-        // ==================== 看板核心逻辑 ====================
         window.initDashboard = function() {
-            // 夜间模式
             const themeBtn = document.getElementById('themeToggleBtn');
             const isDark = localStorage.getItem('darkMode') === 'true';
             if (isDark) { document.body.classList.add('dark'); themeBtn.innerHTML = '☀️ 日间模式'; } 
@@ -648,7 +628,6 @@
                 if (window.fullRefresh) fullRefresh();
             });
 
-            // 全局数据
             let diffData = [];
             let summaryData = [];
             let warehouseSet = new Set();
@@ -659,10 +638,7 @@
             let currentFilteredDiff = [];
             let detailDisplayLimit = 20, detailCurrentOffset = 0;
             let showingPersonView = false;
-            let currentPersonRecords = [];
-            let currentModalRecords = [];
 
-            // DOM 元素
             const warehouseFilter = document.getElementById('warehouseFilter');
             const personKeyword = document.getElementById('personKeyword');
             const personFilter = document.getElementById('personFilter');
@@ -692,12 +668,10 @@
             const modalResetFilter = document.getElementById('modalResetFilter');
             const loadOnlineDataBtn = document.getElementById('loadOnlineDataBtn');
 
-            // 辅助函数：判断客观/主观/执行问题
             function isObjective(cat) { return cat && String(cat).toLowerCase().includes('客观') && !String(cat).toLowerCase().includes('主观'); }
             function isSubjective(cat) { return cat && String(cat).toLowerCase().includes('主观'); }
             function isExecutionIssue(judgedType) { return judgedType === '执行问题'; }
 
-            // 根据质检码生成稳定的背景色
             function getCodeBgColor(code, isDarkMode) {
                 if (!code) return 'transparent';
                 let hash = 0;
@@ -706,14 +680,9 @@
                     hash |= 0;
                 }
                 const hue = Math.abs(hash % 360);
-                if (isDarkMode) {
-                    return `hsl(${hue}, 40%, 30%)`;
-                } else {
-                    return `hsl(${hue}, 50%, 85%)`;
-                }
+                return isDarkMode ? `hsl(${hue}, 40%, 30%)` : `hsl(${hue}, 50%, 85%)`;
             }
 
-            // 主界面差异明细表渲染
             function renderDetailTable() {
                 const total = currentFilteredDiff.length;
                 const endIndex = Math.min(detailCurrentOffset + detailDisplayLimit, total);
@@ -764,6 +733,8 @@
                 return filtered;
             }
 
+            let currentModalRecords = [];
+
             function updateModalFilterOptions() {
                 if (!currentModalRecords.length) {
                     modalIssueTypeFilter.innerHTML = '<option value="__ALL__">全部问题类型</option>';
@@ -786,18 +757,13 @@
 
             function showDetailModal(personName, records, type = 'all') {
                 let filteredRecords = [...records];
-                let titleSuffix = '';
                 if (type === 'objective') {
                     filteredRecords = records.filter(r => isObjective(r.category));
-                    titleSuffix = '客观差异';
                 } else if (type === 'subjective') {
                     filteredRecords = records.filter(r => isSubjective(r.category));
-                    titleSuffix = '主观差异';
-                } else {
-                    titleSuffix = '全部差异';
                 }
                 currentModalRecords = filteredRecords;
-                modalTitle.innerText = `${personName} 的${titleSuffix}明细（共 ${filteredRecords.length} 条）`;
+                modalTitle.innerText = `${personName} 的${type === 'all' ? '全部' : type === 'objective' ? '客观' : '主观'}差异明细（共 ${filteredRecords.length} 条）`;
                 updateModalFilterOptions();
                 modalIssueTypeFilter.value = '__ALL__';
                 modalJudgedIssueTypeFilter.value = '__ALL__';
@@ -851,9 +817,7 @@
                 personPieChart.on('click', (params) => {
                     if (params.componentType === 'series') {
                         const seriesName = params.name;
-                        let type = 'all';
-                        if (seriesName === '客观差异') type = 'objective';
-                        else if (seriesName === '主观差异') type = 'subjective';
+                        let type = seriesName === '客观差异' ? 'objective' : seriesName === '主观差异' ? 'subjective' : 'all';
                         showDetailModal(personName, personRecords, type);
                     }
                 });
@@ -890,7 +854,6 @@
                 updateGlobalPie();
             }
 
-            // 筛选辅助
             function filterDiffData(data) {
                 let filtered = data;
                 const wh = warehouseFilter.value;
@@ -908,38 +871,21 @@
             }
 
             function filterSummaryData(data) {
-                let filtered = data;
                 const wh = warehouseFilter.value;
-                if (wh !== '__ALL__') filtered = filtered.filter(d => d.siteName === wh);
-                return filtered;
+                return wh === '__ALL__' ? data : data.filter(d => d.siteName === wh);
             }
 
-            function getDiffByWarehouseFilter() {
-                const wh = warehouseFilter.value;
-                if (wh === '__ALL__') return diffData;
-                return diffData.filter(d => d.warehouse === wh);
-            }
-
-            // 计算每个站点的客观执行差异率（基于当前选中的中心仓，若选中全部则计算所有仓）
             function computeSiteObjExecDiffRate() {
                 if (!summaryData.length || !diffData.length) return [];
                 const selectedWarehouse = warehouseFilter.value;
-                let filteredSummary = summaryData;
-                if (selectedWarehouse !== '__ALL__') {
-                    filteredSummary = summaryData.filter(s => s.siteName === selectedWarehouse);
-                }
+                let filteredSummary = selectedWarehouse !== '__ALL__' ? summaryData.filter(s => s.siteName === selectedWarehouse) : summaryData;
                 if (filteredSummary.length === 0) return [];
-
                 const siteTotalMap = new Map();
                 filteredSummary.forEach(row => {
                     siteTotalMap.set(row.siteName, (siteTotalMap.get(row.siteName) || 0) + (row.totalChecks || 0));
                 });
-
                 const siteExecCodeSet = new Map();
-                let relevantDiff = diffData;
-                if (selectedWarehouse !== '__ALL__') {
-                    relevantDiff = diffData.filter(d => d.warehouse === selectedWarehouse);
-                }
+                let relevantDiff = selectedWarehouse !== '__ALL__' ? diffData.filter(d => d.warehouse === selectedWarehouse) : diffData;
                 relevantDiff.forEach(d => {
                     if (isObjective(d.category) && isExecutionIssue(d.judgedIssueType) && d.code && d.warehouse) {
                         if (siteTotalMap.has(d.warehouse)) {
@@ -948,7 +894,6 @@
                         }
                     }
                 });
-
                 const result = [];
                 for (let [site, totalChecks] of siteTotalMap.entries()) {
                     const execDevices = siteExecCodeSet.get(site) ? siteExecCodeSet.get(site).size : 0;
@@ -959,7 +904,6 @@
                 return result;
             }
 
-            // 渲染中心仓排名表（响应筛选器）
             function renderObjWarehouseRanking() {
                 const tbody = document.getElementById('objRankBody');
                 if (!summaryData.length || !diffData.length) {
@@ -973,40 +917,28 @@
                 }
                 let html = '';
                 ranking.forEach((item, idx) => {
-                    let rankClass = '';
-                    if (idx === 0) rankClass = 'rank-1';
-                    else if (idx === 1) rankClass = 'rank-2';
-                    else if (idx === 2) rankClass = 'rank-3';
+                    let rankClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : '';
                     html += `<tr class="${rankClass} clickable-row" data-site="${item.site.replace(/"/g, '&quot;')}">`;
-                    html += `<td>${idx+1}</td>`;
-                    html += `<td>${item.site}</td>`;
-                    html += `<td>${item.rate.toFixed(2)}%</td>`;
-                    html += `</tr>`;
+                    html += `<td>${idx+1}</td><td>${item.site}</td><td>${item.rate.toFixed(2)}%</td></tr>`;
                 });
                 tbody.innerHTML = html;
             }
 
-            // 更新抽检指标详情（联动筛选器）
             function updateStatsBoard() {
                 if (!summaryData.length) { 
                     statsArea.innerHTML = `<div class="stats-item">⚠️ 请先上传周汇总表</div>`;
                     return; 
                 }
-                // 筛选后的汇总数据（仅中心仓维度）
                 const filteredSummary = filterSummaryData(summaryData);
                 if (filteredSummary.length === 0) {
                     statsArea.innerHTML = `<div class="stats-item">无匹配汇总数据，请调整筛选</div>`;
                     return;
                 }
-                // 分母：筛选后中心仓的抽检总量之和
                 let totalChecks = 0;
                 filteredSummary.forEach(r => { totalChecks += r.totalChecks || 0; });
-
-                // 分子：基于 currentFilteredDiff（已经过所有筛选条件）
                 const totalDiff = currentFilteredDiff.length;
                 const objTotal = currentFilteredDiff.filter(d => isObjective(d.category)).length;
                 const subjTotal = currentFilteredDiff.filter(d => isSubjective(d.category)).length;
-                // 客观执行差异总量（去重设备数）
                 const execCodeSet = new Set();
                 currentFilteredDiff.forEach(d => {
                     if (isObjective(d.category) && isExecutionIssue(d.judgedIssueType) && d.code) {
@@ -1014,12 +946,10 @@
                     }
                 });
                 const execObjTotal = execCodeSet.size;
-
                 const overallDiffRate = totalChecks ? (totalDiff / totalChecks * 100) : 0;
                 const overallObjRate = totalChecks ? (objTotal / totalChecks * 100) : 0;
                 const overallSubjRate = totalChecks ? (subjTotal / totalChecks * 100) : 0;
                 const execObjRate = totalChecks ? (execObjTotal / totalChecks * 100) : 0;
-
                 statsArea.innerHTML = `
                     <div class="stats-item"><div class="stats-number">${overallDiffRate.toFixed(2)}%</div><div class="stats-label">抽检差异率</div></div>
                     <div class="stats-item"><div class="stats-number">${overallObjRate.toFixed(2)}%</div><div class="stats-label">客观抽检差异率</div></div>
@@ -1072,9 +1002,7 @@
                 barChart.on('click', (params) => {
                     if (params.componentType === 'series' && params.dataIndex !== undefined) {
                         const clickedPerson = names[params.dataIndex];
-                        if (clickedPerson) {
-                            showPersonPieChart(clickedPerson);
-                        }
+                        if (clickedPerson) showPersonPieChart(clickedPerson);
                     }
                 });
                 updateGlobalPie();
@@ -1103,15 +1031,13 @@
                 resetToGlobalPie();
                 refreshChartsAndRankings();
                 renderDetailTable();
-                updateStatsBoard();    // 同步更新抽检指标详情
+                updateStatsBoard();
                 renderObjWarehouseRanking();
             }
 
-            // 解析明细行（过滤个体评估/工程师）
             function parseDiffRow(row) {
                 const strategy = (row['策略类别'] || '').trim();
                 if (strategy === '个体评估/工程师') return null;
-
                 const warehouse = (row['站点名称'] || row['站点'] || row['仓库'] || '').trim();
                 const person = (row['原操作人名称'] || row['原操作人'] || row['质检人员'] || '').trim();
                 if (!warehouse || !person) return null;
@@ -1135,7 +1061,6 @@
                 allPersonSet.clear();
                 allIssueTypes.clear();
                 allJudgedIssueTypes.clear();
-
                 const newSummary = [];
                 for (let row of summaryRows) {
                     const site = (row['站点名称'] || row['站点'] || row['仓库'] || '').trim();
@@ -1149,7 +1074,6 @@
                     });
                     warehouseSet.add(site);
                 }
-
                 const newDiff = [];
                 for (let row of diffRows) {
                     const parsed = parseDiffRow(row);
@@ -1161,12 +1085,9 @@
                         if (parsed.judgedIssueType) allJudgedIssueTypes.add(parsed.judgedIssueType);
                     }
                 }
-
                 if (newDiff.length === 0 || newSummary.length === 0) {
-                    console.error('解析结果为空', { summaryCount: newSummary.length, diffCount: newDiff.length });
                     throw new Error('数据解析失败：未找到有效的行，请检查Excel列名是否正确（已过滤个体评估/工程师）');
                 }
-
                 diffData = newDiff;
                 summaryData = newSummary;
                 return true;
@@ -1188,25 +1109,14 @@
                     const summaryRows = XLSX.utils.sheet_to_json(summaryWb.Sheets[summaryWb.SheetNames[0]]);
                     const diffRows = XLSX.utils.sheet_to_json(diffWb.Sheets[diffWb.SheetNames[0]]);
                     if (summaryRows.length === 0 || diffRows.length === 0) throw new Error('Excel 文件无数据');
-
                     parseAndSetData(summaryRows, diffRows);
-                    // 更新下拉框
-                    const warehouseOpts = ['<option value="__ALL__">全部中心仓</option>', ...Array.from(warehouseSet).sort().map(w => `<option value="${w.replace(/"/g,'&quot;')}">${w}</option>`)];
-                    warehouseFilter.innerHTML = warehouseOpts.join('');
-                    const personOpts = ['<option value="__ALL__">全部质检人员</option>', ...Array.from(allPersonSet).sort().map(p => `<option value="${p.replace(/"/g,'&quot;')}">${p}</option>`)];
-                    personFilter.innerHTML = personOpts.join('');
-                    const issueOpts = ['<option value="__ALL__">全部问题类型</option>', ...Array.from(allIssueTypes).sort().map(t => `<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`)];
-                    issueTypeFilter.innerHTML = issueOpts.join('');
-                    const judgedOpts = ['<option value="__ALL__">全部</option>', ...Array.from(allJudgedIssueTypes).sort().map(t => `<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`)];
-                    judgedIssueTypeFilter.innerHTML = judgedOpts.join('');
-
+                    updateAllFilters();
                     warehouseFilter.value = '__ALL__';
                     personFilter.value = '__ALL__';
                     subjObjFilter.value = 'ALL';
                     issueTypeFilter.value = '__ALL__';
                     judgedIssueTypeFilter.value = '__ALL__';
                     personKeyword.value = '';
-
                     fullRefresh();
                     alert('数据加载成功！已自动剔除“个体评估/工程师”策略类别的记录。');
                 } catch (err) {
@@ -1230,20 +1140,28 @@
                         const mapped = [];
                         rows.forEach(r => {
                             const parsed = parseDiffRow(r);
-                            if (parsed) mapped.push(parsed);
+                            if (parsed) {
+                                mapped.push(parsed);
+                                warehouseSet.add(parsed.warehouse);
+                                allPersonSet.add(parsed.person);
+                                if (parsed.issueType) allIssueTypes.add(parsed.issueType);
+                                if (parsed.judgedIssueType) allJudgedIssueTypes.add(parsed.judgedIssueType);
+                            }
                         });
                         if(mapped.length) { diffData = mapped; callback('diff'); } else callback(null);
                     } else {
                         const mapped = [];
                         rows.forEach(r => {
                             const site = (r['站点名称'] || r['站点'] || r['仓库'] || '').trim();
-                            if(site) mapped.push({
-                                siteName: site,
-                                totalChecks: parseFloat(r['总抽检量'] ?? r['大盘抽检设备数量'] ?? 0),
-                                diffDevices: parseFloat(r['大盘有差异设备量'] ?? r['差异设备量'] ?? 0),
-                                objDiffDevices: parseFloat(r['大盘客观差异设备量'] ?? r['客观差异设备量'] ?? 0),
-                                subjDiffDevices: parseFloat(r['大盘主观差异设备量'] ?? r['主观差异设备量'] ?? 0)
-                            });
+                            if(site) {
+                                mapped.push({
+                                    siteName: site,
+                                    totalChecks: parseFloat(r['总抽检量'] ?? r['大盘抽检设备数量'] ?? 0),
+                                    diffDevices: parseFloat(r['大盘有差异设备量'] ?? r['差异设备量'] ?? 0),
+                                    objDiffDevices: parseFloat(r['大盘客观差异设备量'] ?? r['客观差异设备量'] ?? 0),
+                                    subjDiffDevices: parseFloat(r['大盘主观差异设备量'] ?? r['主观差异设备量'] ?? 0)
+                                });
+                            }
                             warehouseSet.add(site);
                         });
                         if(mapped.length) { summaryData = mapped; callback('summary'); } else callback(null);
@@ -1257,15 +1175,31 @@
                 const files = Array.from(e.target.files);
                 if(!files.length) return;
                 let diffOk=false, sumOk=false, cnt=0;
-                files.forEach(f => processExcelFile(f, (type) => { if(type==='diff') diffOk=true; if(type==='summary') sumOk=true; cnt++; if(cnt === files.length) { if(diffOk && sumOk) { updateWarehouseFilter(); updatePersonFilterOptions(); updateIssueTypeFilterOptions(); updateJudgedIssueTypeFilterOptions(); fullRefresh(); alert('手动上传成功，已过滤个体评估/工程师'); } else alert("请同时上传周汇总表和差异明细表两个文件"); } }));
+                files.forEach(f => processExcelFile(f, (type) => {
+                    if(type==='diff') diffOk=true; if(type==='summary') sumOk=true;
+                    cnt++;
+                    if(cnt === files.length) {
+                        if(diffOk && sumOk) {
+                            updateAllFilters();
+                            fullRefresh();
+                            alert('手动上传成功，已过滤个体评估/工程师');
+                        } else alert("请同时上传周汇总表和差异明细表两个文件");
+                    }
+                }));
                 e.target.value = '';
             });
 
-            function updateWarehouseFilter() { 
-                let opts = ['<option value="__ALL__">全部中心仓</option>']; 
-                Array.from(warehouseSet).sort().forEach(w => opts.push(`<option value="${w.replace(/"/g,'&quot;')}">${w}</option>`)); 
-                warehouseFilter.innerHTML = opts.join(''); 
+            function updateAllFilters() {
+                let warehouseOpts = ['<option value="__ALL__">全部中心仓</option>', ...Array.from(warehouseSet).sort().map(w => `<option value="${w.replace(/"/g,'&quot;')}">${w}</option>`)];
+                warehouseFilter.innerHTML = warehouseOpts.join('');
+                let personOpts = ['<option value="__ALL__">全部质检人员</option>', ...Array.from(allPersonSet).sort().map(p => `<option value="${p.replace(/"/g,'&quot;')}">${p}</option>`)];
+                personFilter.innerHTML = personOpts.join('');
+                let issueOpts = ['<option value="__ALL__">全部问题类型</option>', ...Array.from(allIssueTypes).sort().map(t => `<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`)];
+                issueTypeFilter.innerHTML = issueOpts.join('');
+                let judgedOpts = ['<option value="__ALL__">全部</option>', ...Array.from(allJudgedIssueTypes).sort().map(t => `<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`)];
+                judgedIssueTypeFilter.innerHTML = judgedOpts.join('');
             }
+
             function updatePersonFilterOptions() {
                 const selectedWh = warehouseFilter.value;
                 let baseSet = selectedWh !== '__ALL__' ? new Set(diffData.filter(d => d.warehouse === selectedWh).map(d => d.person)) : allPersonSet;
@@ -1277,18 +1211,6 @@
                 personFilter.innerHTML = opts.join('');
                 if (personFilter.value !== '__ALL__' && !matched.includes(personFilter.value)) personFilter.value = '__ALL__';
             }
-            function updateIssueTypeFilterOptions() { 
-                let types = Array.from(allIssueTypes).filter(t=>t).sort(); 
-                let opts = ['<option value="__ALL__">全部问题类型</option>']; 
-                types.forEach(t => opts.push(`<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`)); 
-                issueTypeFilter.innerHTML = opts.join(''); 
-            }
-            function updateJudgedIssueTypeFilterOptions() { 
-                let types = Array.from(allJudgedIssueTypes).filter(t=>t).sort(); 
-                let opts = ['<option value="__ALL__">全部</option>']; 
-                types.forEach(t => opts.push(`<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`)); 
-                judgedIssueTypeFilter.innerHTML = opts.join(''); 
-            }
 
             backToChartBtn.addEventListener('click', resetToGlobalPie);
             closeModalSpan.addEventListener('click', () => modal.style.display = 'none');
@@ -1296,6 +1218,7 @@
             modalIssueTypeFilter.addEventListener('change', renderModalTable);
             modalJudgedIssueTypeFilter.addEventListener('change', renderModalTable);
             modalResetFilter.addEventListener('click', () => { modalIssueTypeFilter.value = '__ALL__'; modalJudgedIssueTypeFilter.value = '__ALL__'; renderModalTable(); });
+
             objRankTable.addEventListener('click', (e) => {
                 const tr = e.target.closest('tr');
                 if (tr && tr.getAttribute('data-site')) {
@@ -1310,6 +1233,7 @@
                     e.stopPropagation();
                 }
             });
+
             function resetAllFilters() {
                 warehouseFilter.value = '__ALL__';
                 personKeyword.value = '';
@@ -1320,17 +1244,20 @@
                 judgedIssueTypeFilter.value = '__ALL__';
                 fullRefresh();
             }
+
             resetViewHint.addEventListener('click', (e) => { e.stopPropagation(); resetAllFilters(); });
             resetBtn.addEventListener('click', resetAllFilters);
             warehouseFilter.addEventListener('change', () => { personKeyword.value = ''; updatePersonFilterOptions(); personFilter.value = '__ALL__'; fullRefresh(); });
+
             const debounce = (fn, d) => { let t; return function(...args) { clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), d); }; };
             personKeyword.addEventListener('input', debounce(() => { updatePersonFilterOptions(); personFilter.value = '__ALL__'; fullRefresh(); }, 300));
             personFilter.addEventListener('change', fullRefresh);
             subjObjFilter.addEventListener('change', fullRefresh);
             issueTypeFilter.addEventListener('change', fullRefresh);
             judgedIssueTypeFilter.addEventListener('change', fullRefresh);
+
             loadOnlineDataBtn.addEventListener('click', loadOnlineData);
-            loadOnlineData(); // 自动加载
+            loadOnlineData();
             window.fullRefresh = fullRefresh;
         };
 
