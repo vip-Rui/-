@@ -1310,34 +1310,7 @@
                     return true;
                 }
 
-                async function loadOnlineData() {
-                    const btn = loadOnlineDataBtn,
-                        orig = btn.innerText;
-                    btn.innerText = '⏳ 加载中...';
-                    btn.disabled = true;
-                    try {
-                        const [sumRes, diffRes] = await Promise.all([fetch('周汇总表.xlsx'), fetch('差异明细表.xlsx')]);
-                        if (!sumRes.ok || !diffRes.ok) throw new Error(`文件下载失败`);
-                        const sumRows = XLSX.utils.sheet_to_json(XLSX.read(await sumRes.arrayBuffer(), { type: 'array' })
-                            .Sheets[0]);
-                        const diffRows = XLSX.utils.sheet_to_json(XLSX.read(await diffRes.arrayBuffer(), { type: 'array' })
-                            .Sheets[0]);
-                        if (!sumRows.length || !diffRows.length) throw new Error('Excel无数据');
-                        parseAndSetData(sumRows, diffRows);
-                        updateAllFilters();
-                        warehouseFilter.value = '__ALL__';
-                        personFilter.value = '__ALL__';
-                        subjObjFilter.value = 'ALL';
-                        issueTypeFilter.value = '__ALL__';
-                        judgedIssueTypeFilter.value = '__ALL__';
-                        personKeyword.value = '';
-                        fullRefresh();
-                        alert('数据加载成功！（已剔除个体评估/工程师）');
-                    } catch (err) {
-                        alert('加载失败：' + err.message);
-                    } finally { btn.innerText = orig;
-                        btn.disabled = false; }
-                }
+       async function loadOnlineData
 
                 function processExcelFile(file, cb) {
                     const reader = new FileReader();
