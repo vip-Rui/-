@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>数据监察看板 - 客观执行差异率</title>
+    <title>数据监察看板 · 客观执行差异率</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js">
     </script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js">
@@ -216,40 +216,44 @@
             flex-wrap: wrap;
         }
 
+        /* 筛选器冻结 + 统一样式 */
         .filter-bar {
             background: var(--filter-bar-bg);
             border-radius: 14px;
-            padding: 10px 16px;
+            padding: 12px 18px;
             margin-bottom: 16px;
-            box-shadow: var(--shadow);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             display: flex;
             flex-wrap: wrap;
             align-items: flex-end;
-            gap: 10px 12px;
+            gap: 14px 16px;
             border: 1px solid var(--border-color);
-            position: relative;
-            z-index: 10;
+            position: sticky;
+            top: 8px;
+            z-index: 50;
+            backdrop-filter: blur(4px);
+            transition: box-shadow 0.2s;
         }
         .filter-group {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 4px;
             min-width: 90px;
             flex: 1 1 130px;
             max-width: 200px;
         }
         .filter-group label {
             font-weight: 600;
-            font-size: 11px;
+            font-size: 12px;
             color: var(--text-secondary);
             white-space: nowrap;
             letter-spacing: 0.01em;
-            line-height: 1;
+            line-height: 1.2;
         }
         .filter-group select,
         .filter-group input {
             width: 100%;
-            padding: 6px 8px;
+            padding: 7px 10px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
             background: var(--filter-input-bg);
@@ -257,42 +261,42 @@
             font-size: 12px;
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
-            height: 30px;
+            height: 34px;
             line-height: 1.2;
         }
         .filter-group select:focus,
         .filter-group input:focus {
             border-color: #3b82f6;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
         }
         .filter-group.keyword-group {
-            flex: 1 1 110px;
-            max-width: 170px;
+            flex: 1 1 120px;
+            max-width: 180px;
         }
         .filter-group.warehouse-group {
-            flex: 1 1 140px;
-            max-width: 200px;
+            flex: 1 1 150px;
+            max-width: 210px;
         }
         .filter-group.person-group {
-            flex: 1 1 140px;
-            max-width: 200px;
+            flex: 1 1 150px;
+            max-width: 210px;
         }
         .filter-group.subjobj-group {
             flex: 0 0 95px;
-            min-width: 80px;
-            max-width: 110px;
+            min-width: 85px;
+            max-width: 120px;
         }
         .filter-group.issuetype-group {
-            flex: 1 1 130px;
-            max-width: 190px;
-        }
-        .filter-group.judgedtype-group {
             flex: 1 1 140px;
             max-width: 200px;
         }
+        .filter-group.judgedtype-group {
+            flex: 1 1 150px;
+            max-width: 210px;
+        }
         .filter-bar .reset-filter-btn {
             flex: 0 0 auto;
-            padding: 7px 16px;
+            padding: 8px 18px;
             background: var(--reset-btn-bg);
             color: var(--reset-btn-text);
             border: 1px solid var(--border-color);
@@ -302,11 +306,12 @@
             cursor: pointer;
             transition: 0.2s;
             white-space: nowrap;
-            height: 30px;
+            height: 34px;
             align-self: flex-end;
             display: flex;
             align-items: center;
             gap: 4px;
+            letter-spacing: 0.3px;
         }
         .filter-bar .reset-filter-btn:hover {
             background: var(--reset-btn-hover);
@@ -659,8 +664,8 @@
                 padding: 10px 8px;
             }
             .filter-bar {
-                gap: 6px 8px;
-                padding: 8px 10px;
+                gap: 8px 10px;
+                padding: 10px 12px;
             }
             .filter-group {
                 flex: 1 1 100px;
@@ -668,67 +673,45 @@
                 max-width: none;
             }
             .filter-group.subjobj-group {
-                flex: 0 0 70px;
+                flex: 0 0 75px;
+                min-width: 70px;
+            }
+            .filter-group select,
+            .filter-group input {
+                font-size: 11px;
+                padding: 6px 8px;
+                height: 32px;
+            }
+            .filter-group label {
+                font-size: 11px;
+            }
+            .filter-bar .reset-filter-btn {
+                font-size: 11px;
+                padding: 6px 12px;
+                height: 32px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .filter-group {
+                flex: 1 1 80px;
                 min-width: 65px;
             }
             .filter-group select,
             .filter-group input {
-                font-size: 11px;
-                padding: 4px 6px;
-                height: 28px;
+                font-size: 10px;
+                height: 30px;
+                padding: 5px 6px;
             }
             .filter-group label {
                 font-size: 10px;
             }
             .filter-bar .reset-filter-btn {
-                font-size: 11px;
+                font-size: 10px;
                 padding: 5px 10px;
-                height: 28px;
-            }
-            .card {
-                padding: 12px 14px;
-                border-radius: 12px;
-                margin-bottom: 14px;
-            }
-            .chart-box {
-                height: 280px;
-                min-width: 220px;
-            }
-            .stats-number {
-                font-size: 22px;
-            }
-            .top-bar {
-                padding: 8px 14px;
-                border-radius: 12px;
-            }
-            .title-area h2 {
-                font-size: 1.2rem;
-            }
-        }
-        @media (max-width: 600px) {
-            .filter-group {
-                flex: 1 1 80px;
-                min-width: 60px;
-            }
-            .filter-group select,
-            .filter-group input {
-                font-size: 10px;
-                height: 26px;
-                padding: 3px 5px;
-            }
-            .filter-group label {
-                font-size: 9px;
-            }
-            .filter-bar .reset-filter-btn {
-                font-size: 10px;
-                padding: 4px 8px;
-                height: 26px;
+                height: 30px;
                 width: 100%;
                 justify-content: center;
-            }
-            .filter-bar {
-                gap: 4px 6px;
-                padding: 6px 8px;
             }
         }
     </style>
@@ -756,6 +739,7 @@
                 <input type="file" id="combinedFileInput" class="file-input-hidden" accept=".xlsx, .xls" multiple>
             </div>
 
+            <!-- 冻结筛选器 -->
             <div class="filter-bar" id="filterBar">
                 <div class="filter-group warehouse-group">
                     <label>🏚️ 中心仓</label>
@@ -791,7 +775,7 @@
             <div class="card">
                 <div class="card-title">📈 抽检指标详情</div>
                 <div class="stats-grid" id="statsArea"></div>
-                <div class="note-text">※ 数据基于周汇总表和差异明细表（已自动剔除"个体评估/工程师"策略类别的记录）<br>※ 差异总量、客观/主观差异总量已按质检码去重计算（设备数）</div>
+                <div class="note-text">※ 数据基于周汇总表和差异明细表（已自动剔除“个体评估/工程师”策略类别的记录）<br>※ 差异总量、客观/主观差异总量已按质检码去重计算（设备数）</div>
             </div>
 
             <div class="card">
@@ -835,7 +819,7 @@
                     <div><h4>⚠️ 高差异问题（三级项） (TOP8)</h4><table class="ranking-table" id="issueRankTable"><thead><tr><th>排名</th><th>三级项名称</th><th>客观差异次数</th></tr></thead><tbody id="issueRankBody"></tbody></table></div>
                 </div>
             </div>
-            <div class="footer-note">※ 客观差异 = 主客观分类包含"客观"。点击柱状图中的人员查看饼图，点击饼图扇区查看明细弹窗。</div>
+            <div class="footer-note">※ 客观差异 = 主客观分类包含“客观”。点击柱状图中的人员查看饼图，点击饼图扇区查看明细弹窗。</div>
 
             <div id="detailModal" class="modal">
                 <div class="modal-content">
