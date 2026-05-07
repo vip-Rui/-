@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>数据监察看板｜智能分析</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-body: #f0f2f6;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --border-color: #e2e8f0;
+            --kpi-bg: #f8fafc;
+            --header-bg: #ffffff;
+            --btn-bg: #3b82f6;
+            --btn-hover: #2563eb;
+            --shadow: 0 4px 12px rgba(0,0,0,0.05);
+            --table-header-bg: #f1f5f9;
+            --table-hover: #fef9e3;
+            --chart-text: #1e293b;
+            --modal-overlay: rgba(0,0,0,0.5);
+            --filter-bar-bg: #ffffff;
+            --filter-input-bg: #f8fafc;
+            --reset-btn-bg: #f1f5f9;
+            --reset-btn-hover: #e2e8f0;
+            --reset-btn-text: #475569;
+            --switch-btn-bg: #eef2ff;
+        }
+        body.dark {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --kpi-bg: #334155;
+            --header-bg: #1e293b;
+            --btn-bg: #2563eb;
+            --btn-hover: #3b82f6;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --table-header-bg: #334155;
+            --table-hover: #2d3748;
+            --chart-text: #f1f5f9;
+            --modal-overlay: rgba(0,0,0,0.7);
+            --filter-bar-bg: #1e293b;
+            --filter-input-bg: #1e293b;
+            --reset-btn-bg: #334155;
+            --reset-btn-hover: #475569;
+            --reset-btn-text: #cbd5e1;
+            --switch-btn-bg: #2d3a5e;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: var(--bg-body);
+            padding: 20px 24px;
+            color: var(--text-primary);
+            transition: background 0.2s, color 0.2s;
+        }
+        .password-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 9999; display: flex; justify-content: center; align-items: center;
+            backdrop-filter: blur(8px);
+        }
+        .password-box {
+            background: var(--bg-card); border-radius: 24px; padding: 32px; width: 360px;
+            text-align: center; box-shadow: 0 20px 35px rgba(0,0,0,0.3); color: var(--text-primary);
+        }
+        .password-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); font-size: 16px; }
+        .password-box button { width: 100%; padding: 12px; background: var(--btn-bg); color: white; border: none; border-radius: 12px; font-size: 16px; cursor: pointer; font-weight: 600; }
+        .error-msg { color: #ef4444; margin-top: 10px; font-size: 14px; }
+        .main-content { display: none; }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .top-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--header-bg); border-radius: 24px; padding: 12px 24px; margin-bottom: 14px;
+            box-shadow: var(--shadow); flex-wrap: wrap; gap: 12px;
+        }
+        .title-area h2 { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+        .title-area p { font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; }
+        .theme-btn, .mode-btn, .upload-btn {
+            background: var(--kpi-bg); border: 1px solid var(--border-color); border-radius: 32px;
+            padding: 8px 18px; cursor: pointer; font-size: 13px; font-weight: 500;
+            display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; color: var(--text-primary);
+        }
+        .mode-btn.active { background: var(--btn-bg); color: white; border-color: var(--btn-bg); }
+        .upload-btn { background: var(--btn-bg); color: white; border: none; box-shadow: 0 2px 6px rgba(59,130,246,0.2); }
+        .upload-btn:hover { background: var(--btn-hover); transform: translateY(-2px); }
+        .right-buttons { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .filter-bar, .modal-filter-bar {
+            background: var(--filter-bar-bg); border-radius: 20px; padding: 16px 20px;
+            display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 18px;
+            border: 1px solid var(--border-color); backdrop-filter: blur(8px);
+        }
+        .filter-bar { position: sticky; top: 6px; z-index: 60; margin-bottom: 24px; }
+        .filter-group { display: flex; flex-direction: column; gap: 4px; min-width: 100px; flex: 1 1 130px; max-width: 210px; }
+        .filter-group label { font-weight: 600; font-size: 11px; color: var(--text-secondary); }
+        .filter-group select, .filter-group input {
+            width: 100%; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border-color);
+            background: var(--filter-input-bg); color: var(--text-primary); font-size: 12px; height: 36px;
+        }
+        .reset-filter-btn {
+            flex: 0 0 auto; padding: 8px 20px; background: var(--reset-btn-bg); color: var(--reset-btn-text);
+            border: 1px solid var(--border-color); border-radius: 32px; font-size: 12px; font-weight: 600;
+            cursor: pointer; height: 36px; align-self: flex-end; transition: all 0.2s; white-space: nowrap;
+        }
+        .reset-filter-btn:hover { background: var(--reset-btn-hover); transform: scale(0.97); }
+        .card {
+            background: var(--bg-card); border-radius: 28px; box-shadow: var(--shadow);
+            padding: 20px 24px; margin-bottom: 28px; border: 1px solid var(--border-color);
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
+        .card-title { font-size: 1.2rem; font-weight: 700; border-left: 5px solid #3b82f6; padding-left: 16px; color: var(--text-primary); }
+        .switch-group { display: flex; gap: 12px; margin-bottom: 18px; }
+        .switch-btn {
+            background: var(--switch-btn-bg); border: 1px solid var(--border-color); border-radius: 40px;
+            padding: 6px 20px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+            color: var(--text-primary);
+        }
+        .switch-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 8px; }
+        .stats-item {
+            background: var(--kpi-bg); border-radius: 24px; padding: 16px 8px; text-align: center;
+            border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s;
+        }
+        .stats-item:hover { transform: translateY(-4px); border-color: #3b82f6; }
+        .stats-number { font-size: 32px; font-weight: 800; color: #3b82f6; }
+        .stats-label { font-size: 11px; color: var(--text-secondary); margin-top: 8px; }
+        .trend-chart-box { width: 100%; height: 380px; margin-top: 12px; }
+        .insight-grid { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 24px; margin-top: 16px; align-items: start; }
+        .obj-rank-wrapper { display: flex; flex-direction: column; min-width: 0; }
+        .obj-rank-scroll { max-height: 440px; overflow-y: auto; overflow-x: auto; border-radius: 16px; border: 1px solid var(--border-color); background: var(--bg-card); }
+        .obj-rank-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 380px; white-space: nowrap; }
+        .obj-rank-table th, .obj-rank-table td { border: 1px solid var(--border-color); padding: 10px 8px; text-align: center; }
+        .obj-rank-table th { background: var(--table-header-bg); position: sticky; top: 0; z-index: 10; }
+        .obj-rank-table tr:hover { background: var(--table-hover); cursor: pointer; }
+        .rank-1 { background-color: #fde8e8 ; } .rank-2 { background-color: #e8f5e9 ; } .rank-3 { background-color: #e6f2ff ; }
+        body.dark .rank-1 { background-color: #7f4a4acc ; } body.dark .rank-2 { background-color: #2d5a2dcc ; } body.dark .rank-3 { background-color: #2c4c6bcc ; }
+        .reset-hint { font-size: 11px; color: var(--text-secondary); margin-top: 14px; text-align: center; cursor: pointer; padding: 6px 16px; border-radius: 40px; background: var(--kpi-bg); width: fit-content; align-self: center; border: 1px solid var(--border-color); transition: 0.2s; }
+        .reset-hint:hover { background: var(--btn-bg); color: white; }
+        .chart-box { width: 100%; height: 360px; }
+        .right-chart-container { width: 100%; height: 360px; }
+        .rank-table, .detail-table, .ranking-table, .modal-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .rank-table th, .rank-table td, .detail-table th, .detail-table td, .ranking-table th, .ranking-table td, .modal-table th, .modal-table td {
+            border: 1px solid var(--border-color); padding: 8px 6px; text-align: center; white-space: nowrap; color: var(--text-primary);
+        }
+        .rank-table th, .detail-table th, .ranking-table th, .modal-table th { background: var(--table-header-bg); font-weight: 700; }
+        .load-more-btn { text-align: center; margin-top: 18px; padding: 8px; background: var(--kpi-bg); border-radius: 40px; cursor: pointer; font-size: 12px; font-weight: 600; color: #3b82f6; border: 1px solid var(--border-color); transition: 0.2s; width: 140px; margin-left: auto; margin-right: auto; }
+        .two-col { display: flex; gap: 24px; flex-wrap: wrap; } .two-col>div { flex: 1; min-width: 250px; overflow-x: auto; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--modal-overlay); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+        .modal.visible { display: flex; }
+        .modal-content { background: var(--bg-card); border-radius: 32px; width: 92%; max-width: 1400px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 25px 40px rgba(0,0,0,0.3); overflow: hidden; padding: 24px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: none; }
+        .close-modal { cursor: pointer; font-size: 32px; font-weight: bold; padding: 0 12px; line-height: 1; }
+        .modal-filter-bar { margin: 0 0 16px 0; padding: 12px 16px; }
+        #modalBody { flex: 1; overflow-y: auto; }
+        .toast-msg { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1f2937; color: #fff; padding: 10px 24px; border-radius: 60px; font-size: 13px; z-index: 2000; white-space: nowrap; box-shadow: 0 8px 20px rgba(0,0,0,0.2); font-weight: 500; }
+        @media (max-width: 1000px) { .insight-grid { grid-template-columns: 1fr 1fr; } .right-chart-container { grid-column: span 1; } }
+        @media (max-width: 700px) { .insight-grid { grid-template-columns: 1fr; } body { padding: 12px; } .card { padding: 16px; } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; } ::-webkit-scrollbar-track { background: var(--border-color); border-radius: 10px; } ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <!-- 密码遮罩 -->
+    <div id="passwordOverlay" class="password-overlay">
+        <div class="password-box">
+            <h3>🔐 访问验证</h3>
+            <p>请输入访问密码</p>
+            <input type="password" id="passwordInput" placeholder="密码" autofocus>
+            <button id="submitPassword">确认</button>
+            <div id="passwordError" class="error-msg"></div>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div id="mainContent" class="main-content">
+        <div class="container">
+            <div class="top-bar">
+                <div class="title-area">
+                    <h2>📋 数据监察看板</h2>
+                    <p>📌 双文件联动｜周度/月度切换｜深层穿透分析</p>
+                </div>
+                <div class="right-buttons">
+                    <button id="themeToggleBtn" class="theme-btn">🌙 夜间模式</button>
+                    <button id="loadWeeklyBtn" class="mode-btn active">📅 周度数据</button>
+                    <button id="loadMonthlyBtn" class="mode-btn">📆 月度数据</button>
+                    <button id="uploadCombinedBtn" class="upload-btn">📁 上传文件</button>
+                </div>
+                <input type="file" id="combinedFileInput" style="display: none;" accept=".xlsx, .xls" multiple>
+            </div>
+
+            <div class="filter-bar">
+                <div class="filter-group"><label>🏚️ 中心仓</label><select id="warehouseFilter"><option value="__ALL__">全部中心仓</option></select></div>
+                <div class="filter-group"><label>📅 开始日期</label><input type="date" id="startDateFilter"></div>
+                <div class="filter-group"><label>📅 结束日期</label><input type="date" id="endDateFilter"></div>
+                <div class="filter-group"><label>🔎 质检人员关键字</label><input type="text" id="personKeyword" placeholder="姓名关键字"></div>
+                <div class="filter-group"><label>👤 质检人员</label><select id="personFilter"><option value="__ALL__">全部质检人员</option></select></div>
+                <div class="filter-group"><label>📌 主客观项</label><select id="subjObjFilter"><option value="ALL">全部</option><option value="OBJ">客观</option><option value="SUBJ">主观</option></select></div>
+                <div class="filter-group"><label>⚠️ 问题类型</label><select id="issueTypeFilter"><option value="__ALL__">全部问题类型</option></select></div>
+                <div class="filter-group"><label>🔖 抽检判定类型</label><select id="judgedIssueTypeFilter"><option value="__ALL__">全部</option></select></div>
+                <button id="resetFilter" class="reset-filter-btn">↻ 重置筛选</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📈 核心质量指标（点击卡片查看明细）</div>
+                <div class="stats-grid" id="statsArea"></div>
+                <div class="note-text" style="font-size:11px; margin-top:12px;">※ 差异总量按质检码去重；客观执行差异率 = 客观+执行问题设备占比</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📅 每日抽检差异趋势（设备去重）· 点击柱体查看当日明细</div>
+                <div id="trendChart" class="trend-chart-box"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><div class="card-title">📊 中心仓客观执行差异率排行 & 人员洞察 & 问题分类</div></div>
+                <div class="insight-grid">
+                    <div class="obj-rank-wrapper">
+                        <div class="obj-rank-scroll">
+                            <table class="obj-rank-table" id="objRankTable">
+                                <thead><tr><th>排名</th><th>站点名称</th><th>客观执行抽检差异率</th></tr></thead>
+                                <tbody id="objRankBody"><tr><td colspan="3">等待数据加载...</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="reset-hint" id="resetViewHint">✨ 一键重置所有筛选并刷新视图</div>
+                    </div>
+                    <div id="personStackChart" class="chart-box"></div>
+                    <div id="issueTypeChart" class="right-chart-container"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><div class="card-title">🏆 问题深度排行（TOP8 客观/主观切换）</div></div>
+                <div class="switch-group" id="problemTypeSwitch">
+                    <button class="switch-btn active" data-type="OBJ">📊 客观问题 TOP8</button>
+                    <button class="switch-btn" data-type="SUBJ">📊 主观问题 TOP8</button>
+                </div>
+                <div class="two-col">
+                    <div>
+                        <h4 style="margin-bottom:8px;">📱 高差异型号 · 点击行查看明细</h4>
+                        <table class="ranking-table" id="modelRankTable"><thead><tr><th>排名</th><th>型号名称</th><th>差异次数</th></tr></thead><tbody id="modelRankBody"></tbody></table>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom:8px;">⚠️ 高频三级项 · 点击行查看明细</h4>
+                        <table class="ranking-table" id="issueRankTable"><thead><tr><th>排名</th><th>三级项名称</th><th>差异次数</th></tr></thead><tbody id="issueRankBody"></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">👤 质检人员差异排名（点击查看明细）</div>
+                <div style="overflow-x:auto;">
+                    <table class="rank-table" id="personTable">
+                        <thead><tr><th>排名</th><th>质检人员</th><th>总差异次数</th><th>客观次数</th><th>主观次数</th><th>所属中心仓</th></tr></thead>
+                        <tbody id="personTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="personLoadMoreBtn" class="load-more-btn" style="display:none;">显示更多</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📋 差异明细（三级项 + QA抽检人）</div>
+                <div style="overflow-x:auto;">
+                    <table class="detail-table" id="detailTable">
+                        <thead><tr><th>日期</th><th>中心仓</th><th>质检码</th><th>一级项</th><th>二级项</th><th>三级项</th><th>主客观分类</th><th>问题类型</th><th>抽检判定类型</th><th>质检人员</th><th>QA抽检人</th></tr></thead>
+                        <tbody id="detailTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="loadMoreBtn" class="load-more-btn" style="display:none;">显示更多</div>
+            </div>
+            <div class="footer-note" style="font-size:11px;text-align:center;opacity:0.7;">※ 点击图表/表格均可下钻查看明细</div>
+        </div>
+    </div>
+
+    <!-- 弹窗 -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">差异明细</h3><span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-filter-bar">
+                <div class="filter-group"><label>📌 主客观项</label><select id="modalSubjObjFilter"><option value="ALL">全部</option><option value="OBJ">客观</option><option value="SUBJ">主观</option></select></div>
+                <div class="filter-group"><label>⚠️ 问题类型</label><select id="modalIssueTypeFilter"><option value="__ALL__">全部</option></select></div>
+                <div class="filter-group"><label>🔖 抽检判定类型</label><select id="modalJudgedIssueTypeFilter"><option value="__ALL__">全部</option></select></div>
+                <button id="modalResetFilter" class="reset-filter-btn">↻ 重置筛选</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        // ---------- 密码验证 ----------
+        const CORRECT_PASSWORD = 'zz1111';
+        const overlay = document.getElementById('passwordOverlay');
+        const mainContent = document.getElementById('mainContent');
+        const pwdInput = document.getElementById('passwordInput');
+        const submitBtn = document.getElementById('submitPassword');
+        const errorDiv = document.getElementById('passwordError');
+
+        function checkPassword() {
+            if (pwdInput.value === CORRECT_PASSWORD) {
+                overlay.style.display = 'none';
+                mainContent.style.display = 'block';
+                sessionStorage.setItem('authenticated', 'true');
+                if (!window._dashboardStarted) {
+                    window._dashboardStarted = true;
+                    initDashboard();
+                }
+            } else {
+                errorDiv.innerText = '密码错误，请重试';
+                pwdInput.value = '';
+                pwdInput.focus();
+            }
+        }
+        submitBtn.addEventListener('click', checkPassword);
+        pwdInput.addEventListener('keypress', e => { if (e.key === 'Enter') checkPassword(); });
+        if (sessionStorage.getItem('authenticated') === 'true') {
+            overlay.style.display = 'none';
+            mainContent.style.display = 'block';
+        }
+
+        // ---------- 看板逻辑 ----------
+        function initDashboard() {
+            let diffData = [], summaryData = [];
+            let warehouseSet = new Set(), allPersonSet = new Set(), allIssueTypes = new Set(), allJudgedIssueTypes = new Set();
+            let currentFilteredDiff = [];
+            let detailDisplayLimit = 10, detailCurrentOffset = 0;
+            let personStackChart = null, issueTypeChart = null, trendChart = null;
+            let currentProblemType = 'OBJ';
+            let allPersonList = [], currentPersonPage = 1;
+
+            // 文件映射
+            const FILE_MAP = {
+                weekly:  ['周汇总表.xlsx', '差异明细表.xlsx'],
+                monthly: ['月汇总表.xlsx', '月差异明细表.xlsx']
+            };
+
+            // DOM 元素
+            const warehouseFilter = document.getElementById('warehouseFilter'),
+                startDateFilter = document.getElementById('startDateFilter'),
+                endDateFilter = document.getElementById('endDateFilter'),
+                personKeyword = document.getElementById('personKeyword'),
+                personFilter = document.getElementById('personFilter'),
+                subjObjFilter = document.getElementById('subjObjFilter'),
+                issueTypeFilter = document.getElementById('issueTypeFilter'),
+                judgedIssueTypeFilter = document.getElementById('judgedIssueTypeFilter'),
+                resetBtn = document.getElementById('resetFilter'),
+                loadMoreBtn = document.getElementById('loadMoreBtn'),
+                detailTableBody = document.getElementById('detailTableBody'),
+                statsArea = document.getElementById('statsArea'),
+                combinedFileInput = document.getElementById('combinedFileInput'),
+                uploadCombinedBtn = document.getElementById('uploadCombinedBtn'),
+                resetViewHint = document.getElementById('resetViewHint'),
+                modal = document.getElementById('detailModal'),
+                modalTitle = document.getElementById('modalTitle'),
+                modalBody = document.getElementById('modalBody'),
+                closeModalSpan = document.querySelector('.close-modal'),
+                modalSubjObjFilter = document.getElementById('modalSubjObjFilter'),
+                modalIssueTypeFilter = document.getElementById('modalIssueTypeFilter'),
+                modalJudgedIssueTypeFilter = document.getElementById('modalJudgedIssueTypeFilter'),
+                modalResetFilter = document.getElementById('modalResetFilter'),
+                themeBtn = document.getElementById('themeToggleBtn'),
+                personLoadMoreBtn = document.getElementById('personLoadMoreBtn'),
+                problemTypeSwitch = document.getElementById('problemTypeSwitch'),
+                loadWeeklyBtn = document.getElementById('loadWeeklyBtn'),
+                loadMonthlyBtn = document.getElementById('loadMonthlyBtn');
+
+            let currentModalRecords = [];
+
+            function normalizeLevel3(val) { let t = val?.trim(); return t && t !== "" ? t : "（错判）"; }
+            function showToast(msg, isError = false, detailHtml = '') {
+                let t = document.querySelector('.toast-msg');
+                if (!t) { t = document.createElement('div'); t.className = 'toast-msg'; document.body.appendChild(t); }
+                if (isError) {
+                    t.style.background = '#b91c1c'; t.style.whiteSpace = 'normal'; t.style.maxWidth = '90%';
+                    t.innerHTML = `<strong>⚠️ ${msg}</strong>${detailHtml ? `<div class="error-detail" style="white-space:pre-wrap;word-break:break-word;max-width:600px;background:var(--bg-card);border-left:4px solid #ef4444;padding:14px;border-radius:16px;font-size:12px;">${detailHtml}</div>` : ''}`;
+                } else {
+                    t.style.background = '#1f2937'; t.style.whiteSpace = 'nowrap'; t.innerHTML = msg;
+                }
+                t.style.display = 'block';
+                setTimeout(() => { t.style.display = 'none'; }, 4200);
+            }
+
+            function isObjective(c) { return c && String(c).includes('客观') && !String(c).includes('主观'); }
+            function isSubjective(c) { return c && String(c).includes('主观'); }
+            function isExecutionIssue(t) { return t === '执行问题'; }
+
+            function getField(row, possibleNames, defaultValue = '') {
+                for (let name of possibleNames) {
+                    let val = row[name];
+                    if (val !== undefined && val !== null && val !== '') {
+                        let s = String(val).trim();
+                        if (s !== '') return s;
+                    }
+                }
+                return defaultValue;
+            }
+
+            function parseSummaryRow(row) {
+                const site = getField(row, ['站点名称'], '');
+                if (!site) return null;
+                let total = parseFloat(getField(row, ['总抽检量', '大盘抽检设备数量', '抽检总量'], '0'));
+                if (isNaN(total)) total = 0;
+                return { siteName: site, totalChecks: total };
+            }
+
+            function parseDiffRow(row) {
+                if (getField(row, ['策略类别'], '') === '个体评估/工程师') return null;
+                const warehouse = getField(row, ['站点名称'], '');
+                const person = getField(row, ['原操作人名称'], '');
+                if (!warehouse || !person) return null;
+                return {
+                    warehouse, person,
+                    qaInspector: getField(row, ['新操作人名称'], ''),
+                    category: getField(row, ['主客观问题分类'], ''),
+                    date: getField(row, ['日期'], ''),
+                    level1: getField(row, ['一级项名称'], ''),
+                    level2: getField(row, ['二级项名称'], ''),
+                    level3: getField(row, ['新三级项名称', '三级项名称'], ''),
+                    issueType: getField(row, ['问题类型'], ''),
+                    judgedIssueType: getField(row, ['抽检判定的问题类型'], ''),
+                    model: getField(row, ['型号名称'], ''),
+                    code: getField(row, ['质检码'], '')
+                };
+            }
+
+            function setDataFromParsed(summaryRows, diffRows) {
+                summaryData = summaryRows;
+                diffData = diffRows;
+                warehouseSet.clear(); allPersonSet.clear(); allIssueTypes.clear(); allJudgedIssueTypes.clear();
+                summaryData.forEach(s => warehouseSet.add(s.siteName));
+                diffData.forEach(d => {
+                    warehouseSet.add(d.warehouse); allPersonSet.add(d.person);
+                    if (d.issueType) allIssueTypes.add(d.issueType);
+                    if (d.judgedIssueType) allJudgedIssueTypes.add(d.judgedIssueType);
+                });
+                return true;
+            }
+
+            function isDateInRange(dateStr) {
+                if (!dateStr) return true;
+                let start = startDateFilter.value, end = endDateFilter.value;
+                if (!start && !end) return true;
+                let dateOnly = dateStr.split(' ')[0];
+                if (start && dateOnly < start) return false;
+                if (end && dateOnly > end) return false;
+                return true;
+            }
+
+            function filterDiffData(data) {
+                let f = data;
+                if (warehouseFilter.value !== '__ALL__') f = f.filter(d => d.warehouse === warehouseFilter.value);
+                if (personFilter.value !== '__ALL__') f = f.filter(d => d.person === personFilter.value);
+                if (subjObjFilter.value === 'OBJ') f = f.filter(d => isObjective(d.category));
+                else if (subjObjFilter.value === 'SUBJ') f = f.filter(d => isSubjective(d.category));
+                if (issueTypeFilter.value !== '__ALL__') f = f.filter(d => d.issueType === issueTypeFilter.value);
+                if (judgedIssueTypeFilter.value !== '__ALL__') f = f.filter(d => d.judgedIssueType === judgedIssueTypeFilter.value);
+                f = f.filter(d => isDateInRange(d.date));
+                return f;
+            }
+
+            function filterSummaryData(data) {
+                return warehouseFilter.value === '__ALL__' ? data : data.filter(d => d.siteName === warehouseFilter.value);
+            }
+
+            function getChartTextColor() { return document.body.classList.contains('dark') ? '#e2e8f0' : '#1e293b'; }
+            function getAxisLineColor() { return document.body.classList.contains('dark') ? '#475569' : '#cbd5e1'; }
+
+            function updateStatsBoard() {
+                if (!summaryData.length) { statsArea.innerHTML = '<div class="stats-item">⚠️ 请加载数据</div>'; return; }
+                const filteredSummary = filterSummaryData(summaryData);
+                let totalChecks = filteredSummary.reduce((acc, r) => acc + (r.totalChecks || 0), 0);
+                const uniqueCodesAll = new Set(currentFilteredDiff.map(d => d.code)).size;
+                const uniqueCodesObj = new Set(currentFilteredDiff.filter(d => isObjective(d.category)).map(d => d.code)).size;
+                const uniqueCodesSubj = new Set(currentFilteredDiff.filter(d => isSubjective(d.category)).map(d => d.code)).size;
+                const execCodeSet = new Set();
+                currentFilteredDiff.forEach(d => { if (isObjective(d.category) && isExecutionIssue(d.judgedIssueType) && d.code) execCodeSet.add(d.code); });
+                const execObjTotal = execCodeSet.size;
+                statsArea.innerHTML = `
+                    <div class="stats-item" data-type="total_diff"><div class="stats-number">${totalChecks ? (uniqueCodesAll/totalChecks*100).toFixed(2) : 0}%</div><div class="stats-label">抽检差异率</div></div>
+                    <div class="stats-item" data-type="obj_diff"><div class="stats-number">${totalChecks ? (uniqueCodesObj/totalChecks*100).toFixed(2) : 0}%</div><div class="stats-label">客观抽检差异率</div></div>
+                    <div class="stats-item" data-type="exec_diff"><div class="stats-number">${totalChecks ? (execObjTotal/totalChecks*100).toFixed(2) : 0}%</div><div class="stats-label">客观执行抽检差异率</div></div>
+                    <div class="stats-item" data-type="subj_diff"><div class="stats-number">${totalChecks ? (uniqueCodesSubj/totalChecks*100).toFixed(2) : 0}%</div><div class="stats-label">主观抽检差异率</div></div>
+                    <div class="stats-item" data-type="total_checks"><div class="stats-number">${totalChecks}</div><div class="stats-label">抽检总量(台)</div></div>
+                    <div class="stats-item" data-type="unique_all"><div class="stats-number">${uniqueCodesAll}</div><div class="stats-label">抽检差异总量(设备)</div></div>
+                    <div class="stats-item" data-type="unique_obj"><div class="stats-number">${uniqueCodesObj}</div><div class="stats-label">客观差异总量</div></div>
+                    <div class="stats-item" data-type="unique_subj"><div class="stats-number">${uniqueCodesSubj}</div><div class="stats-label">主观差异总量</div></div>`;
+            }
+
+            function renderTrendChart() {
+                if (!trendChart) trendChart = echarts.init(document.getElementById('trendChart'));
+                const dateMap = new Map();
+                currentFilteredDiff.forEach(d => { if (d.date && d.code) { let dt = d.date.split(' ')[0]; if (!dateMap.has(dt)) dateMap.set(dt, new Set()); dateMap.get(dt).add(d.code); } });
+                const sorted = Array.from(dateMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+                const xData = sorted.map(item => item[0]), yData = sorted.map(item => item[1].size);
+                const textColor = getChartTextColor(), axisLineColor = getAxisLineColor();
+                trendChart.setOption({
+                    title: { text: '每日差异设备数 (去重)', left: 'center', top: 4, textStyle: { color: textColor, fontWeight: '600', fontSize: 14 } },
+                    tooltip: { trigger: 'axis' },
+                    xAxis: { type: 'category', data: xData, axisLabel: { rotate: 35, color: textColor }, axisLine: { lineStyle: { color: axisLineColor } } },
+                    yAxis: { type: 'value', name: '差异设备数', nameTextStyle: { color: textColor }, axisLabel: { color: textColor } },
+                    series: [{ type: 'bar', data: yData, itemStyle: { borderRadius: [6,6,0,0], color: new echarts.graphic.LinearGradient(0,0,0,1, [{offset:0,color:'#4f9eff'},{offset:0.5,color:'#3b82f6'},{offset:1,color:'#1e6df2'}]) }, label: { show: true, position: 'top', color: textColor } }]
+                });
+                trendChart.off('click');
+                trendChart.on('click', params => {
+                    if (params.componentType === 'series') {
+                        const date = xData[params.dataIndex];
+                        const filtered = currentFilteredDiff.filter(d => d.date && d.date.split(' ')[0] === date);
+                        openDetailWithData(filtered, `📅 ${date} 差异明细 (${filtered.length}条)`);
+                    }
+                });
+                trendChart.resize();
+            }
+
+            function renderPersonStackChart() {
+                if (!personStackChart) personStackChart = echarts.init(document.getElementById('personStackChart'));
+                const personMap = new Map();
+                currentFilteredDiff.forEach(d => {
+                    if (!personMap.has(d.person)) personMap.set(d.person, { obj: 0, subj: 0 });
+                    const rec = personMap.get(d.person);
+                    if (isObjective(d.category)) rec.obj++; else if (isSubjective(d.category)) rec.subj++;
+                });
+                let list = Array.from(personMap.entries()).map(([name, c]) => ({ name, ...c, total: c.obj+c.subj })).sort((a,b) => b.total - a.total);
+                const top8 = list.slice(0,8);
+                const names = top8.map(p => p.name), objData = top8.map(p => p.obj), subjData = top8.map(p => p.subj);
+                const textColor = getChartTextColor();
+                personStackChart.setOption({
+                    title: { text: '质检人员差异次数 TOP8', left: 'center', top: 0, textStyle: { color: textColor, fontSize: 13, fontWeight: '600' } },
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    legend: { data: ['客观差异','主观差异'], left: 'left', textStyle: { color: textColor }, top: 20 },
+                    grid: { containLabel: true, left: '13%', right: '12%', top: 52, bottom: 20 },
+                    xAxis: { type: 'value', name: '次数', axisLabel: { color: textColor } },
+                    yAxis: { type: 'category', data: names, axisLabel: { color: textColor, fontWeight: 'bold' } },
+                    series: [
+                        { name: '客观差异', type: 'bar', stack: 'total', data: objData, itemStyle: { color: '#3b82f6' }, label: { show: true, position: 'right', color: textColor, formatter: p => p.value > 0 ? p.value : '' } },
+                        { name: '主观差异', type: 'bar', stack: 'total', data: subjData, itemStyle: { color: '#f97316' }, label: { show: true, position: 'right', color: textColor, formatter: p => p.value > 0 ? p.value : '' } }
+                    ]
+                });
+                personStackChart.off('click');
+                personStackChart.on('click', params => {
+                    if (params.componentType === 'series') {
+                        const personName = params.name, seriesName = params.seriesName;
+                        let filtered = currentFilteredDiff.filter(d => d.person === personName);
+                        if (seriesName === '客观差异') filtered = filtered.filter(d => isObjective(d.category));
+                        else if (seriesName === '主观差异') filtered = filtered.filter(d => isSubjective(d.category));
+                        openDetailWithData(filtered, `${personName} - ${seriesName} (${filtered.length}条)`);
+                    }
+                });
+                personStackChart.resize();
+            }
+
+            function renderIssueTypeChart() {
+                if (!issueTypeChart) issueTypeChart = echarts.init(document.getElementById('issueTypeChart'));
+                const typeMap = new Map();
+                currentFilteredDiff.forEach(d => { if (d.issueType?.trim()) typeMap.set(d.issueType, (typeMap.get(d.issueType)||0)+1); });
+                const data = Array.from(typeMap.entries()).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
+                const textColor = getChartTextColor();
+                issueTypeChart.setOption({
+                    title: { text: '仓内问题类型分布', left: 'center', top: 0, textStyle: { color: textColor, fontSize: 13, fontWeight: '600' } },
+                    tooltip: { trigger: 'item', formatter: '{b}: {d}% ({c}次)' },
+                    legend: { textStyle: { color: textColor }, top: 24, left: 'center' },
+                    series: [{ type: 'pie', radius: '48%', center: ['50%', '62%'], data, label: { show: true, formatter: '{b}: {d}%', color: textColor }, emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.3)' } } }]
+                });
+                issueTypeChart.off('click');
+                issueTypeChart.on('click', params => {
+                    const type = params.name;
+                    const filtered = currentFilteredDiff.filter(d => d.issueType === type);
+                    openDetailWithData(filtered, `问题类型【${type}】明细 (${filtered.length}条)`);
+                });
+                issueTypeChart.resize();
+            }
+
+            function renderObjWarehouseRanking() {
+                if (!summaryData.length || !diffData.length) { document.getElementById('objRankBody').innerHTML = '<tr><td colspan="3">无数据</td></tr>'; return; }
+                const siteTotalMap = new Map();
+                let fs = filterSummaryData(summaryData);
+                fs.forEach(s => siteTotalMap.set(s.siteName, (siteTotalMap.get(s.siteName)||0)+(s.totalChecks||0)));
+                const siteExecCodeSet = new Map();
+                let rel = warehouseFilter.value !== '__ALL__' ? currentFilteredDiff.filter(d => d.warehouse === warehouseFilter.value) : currentFilteredDiff;
+                rel.forEach(d => { if (isObjective(d.category) && isExecutionIssue(d.judgedIssueType) && d.code && d.warehouse && siteTotalMap.has(d.warehouse)) { if (!siteExecCodeSet.has(d.warehouse)) siteExecCodeSet.set(d.warehouse, new Set()); siteExecCodeSet.get(d.warehouse).add(d.code); } });
+                const result = [];
+                for (let [site, total] of siteTotalMap.entries()) { const dev = siteExecCodeSet.get(site)?.size || 0; result.push({ site, rate: total ? (dev/total*100) : 0 }); }
+                result.sort((a,b) => b.rate - a.rate);
+                document.getElementById('objRankBody').innerHTML = result.map((item, idx) => `<tr class="${idx===0?'rank-1':idx===1?'rank-2':idx===2?'rank-3':''}" data-site="${item.site.replace(/"/g,'&quot;')}"><td>${idx+1}</td><td>${item.site}</td><td>${item.rate.toFixed(2)}%</td></tr>`).join('');
+            }
+
+            function getFilteredForProblemType() {
+                return currentProblemType === 'OBJ' ? currentFilteredDiff.filter(d => isObjective(d.category)) : currentFilteredDiff.filter(d => isSubjective(d.category));
+            }
+
+            function renderObjectiveRankings() {
+                const data = getFilteredForProblemType();
+                const modelMap = new Map(); data.forEach(d => { if (d.model) modelMap.set(d.model, (modelMap.get(d.model)||0)+1); });
+                const modelRank = Array.from(modelMap.entries()).map(([n,c]) => ({ name: n, count: c })).sort((a,b) => b.count - a.count).slice(0,8);
+                document.getElementById('modelRankBody').innerHTML = modelRank.map((m,i) => `<tr data-model="${m.name.replace(/"/g,'&quot;')}"><td>${i+1}</td><td>${m.name}</td><td>${m.count}</td></tr>`).join('');
+                const l3Map = new Map(); data.forEach(d => { let n = normalizeLevel3(d.level3); l3Map.set(n, (l3Map.get(n)||0)+1); });
+                const l3Rank = Array.from(l3Map.entries()).map(([n,c]) => ({ name: n, count: c })).sort((a,b) => b.count - a.count).slice(0,8);
+                document.getElementById('issueRankBody').innerHTML = l3Rank.map((m,i) => `<tr data-level3="${m.name.replace(/"/g,'&quot;')}"><td>${i+1}</td><td>${m.name}</td><td>${m.count}</td></tr>`).join('');
+            }
+
+            function buildPersonList() {
+                const map = new Map();
+                currentFilteredDiff.forEach(d => {
+                    const key = `${d.person}|${d.warehouse}`;
+                    if (!map.has(key)) map.set(key, { person: d.person, warehouse: d.warehouse, total: 0, obj: 0, subj: 0 });
+                    const rec = map.get(key); rec.total++; if (isObjective(d.category)) rec.obj++; if (isSubjective(d.category)) rec.subj++;
+                });
+                allPersonList = Array.from(map.values()).sort((a,b) => b.total - a.total);
+                currentPersonPage = 1;
+                renderPersonTablePage();
+            }
+
+            function renderPersonTablePage() {
+                const end = currentPersonPage * 10, show = allPersonList.slice(0, end);
+                document.getElementById('personTableBody').innerHTML = show.map((p, idx) => `<tr data-person="${p.person.replace(/"/g,'&quot;')}"><td>${idx+1}</td><td>${p.person}</td><td>${p.total}</td><td>${p.obj}</td><td>${p.subj}</td><td>${p.warehouse}</td></tr>`).join('');
+                personLoadMoreBtn.style.display = end < allPersonList.length ? 'block' : 'none';
+            }
+
+            function loadMorePersons() { currentPersonPage++; renderPersonTablePage(); }
+
+            function renderDetailTable() {
+                const total = currentFilteredDiff.length, end = Math.min(detailCurrentOffset + detailDisplayLimit, total);
+                const slice = currentFilteredDiff.slice(0, end);
+                detailTableBody.innerHTML = slice.map(d => `<tr><td>${d.date||'-'}</td><td>${d.warehouse||'-'}</td><td>${d.code||'-'}</td><td>${d.level1||'-'}</td><td>${d.level2||'-'}</td><td>${d.level3||'-'}</td><td>${d.category||'-'}</td><td>${d.issueType||'-'}</td><td>${d.judgedIssueType||'-'}</td><td>${d.person||'-'}</td><td>${d.qaInspector||'-'}</td></tr>`).join('');
+                loadMoreBtn.style.display = end < total ? 'block' : 'none';
+            }
+
+            function openDetailWithData(records, title) {
+                if (!records.length) { showToast('无明细数据'); return; }
+                currentModalRecords = [...records];
+                modalTitle.innerText = title;
+                const issueSet = new Set(), judgedSet = new Set();
+                records.forEach(r => { if (r.issueType) issueSet.add(r.issueType); if (r.judgedIssueType) judgedSet.add(r.judgedIssueType); });
+                modalSubjObjFilter.value = 'ALL';
+                modalIssueTypeFilter.innerHTML = '<option value="__ALL__">全部</option>' + Array.from(issueSet).sort().map(t => `<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`).join('');
+                modalJudgedIssueTypeFilter.innerHTML = '<option value="__ALL__">全部</option>' + Array.from(judgedSet).sort().map(t => `<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`).join('');
+                modalIssueTypeFilter.value = '__ALL__'; modalJudgedIssueTypeFilter.value = '__ALL__';
+                renderModalTable();
+                modal.classList.add('visible');
+            }
+
+            function renderModalTable() {
+                let filtered = currentModalRecords.filter(d => {
+                    const subjMatch = modalSubjObjFilter.value === 'ALL' ? true : (modalSubjObjFilter.value === 'OBJ' ? isObjective(d.category) : isSubjective(d.category));
+                    const issueMatch = modalIssueTypeFilter.value === '__ALL__' || d.issueType === modalIssueTypeFilter.value;
+                    const judgedMatch = modalJudgedIssueTypeFilter.value === '__ALL__' || d.judgedIssueType === modalJudgedIssueTypeFilter.value;
+                    return subjMatch && issueMatch && judgedMatch;
+                });
+                if (!filtered.length) { modalBody.innerHTML = '<div style="padding:20px;text-align:center;">无匹配记录</div>'; return; }
+                const dark = document.body.classList.contains('dark');
+                const codeCount = new Map(); filtered.forEach(r => { if (r.code) codeCount.set(r.code, (codeCount.get(r.code)||0)+1); });
+                let html = `<table class="modal-table"><thead><tr><th>一级项</th><th>二级项</th><th>三级项</th><th>主客观分类</th><th>问题类型</th><th>抽检判定类型</th><th>中心仓</th><th>质检码</th><th>质检人员</th><th>日期</th></tr></thead><tbody>`;
+                filtered.forEach(rec => {
+                    let bg = 'transparent';
+                    if (rec.code && codeCount.get(rec.code) >= 2) {
+                        try { const hash = Array.from(String(rec.code)).reduce((a,c) => ((a<<5)-a)+c.charCodeAt(0),0); const hue = Math.abs(hash%360); bg = `hsl(${hue}, ${dark?'40%':'50%'}, ${dark?'30%':'85%'})`; } catch(e) { bg = dark?'#3b3b3b':'#f0f0f0'; }
+                    }
+                    html += `<tr style="background:${bg};"><td>${rec.level1||'-'}</td><td>${rec.level2||'-'}</td><td>${rec.level3||'-'}</td><td>${rec.category||'-'}</td><td>${rec.issueType||'-'}</td><td>${rec.judgedIssueType||'-'}</td><td>${rec.warehouse||'-'}</td><td>${rec.code||'-'}</td><td>${rec.person||'-'}</td><td>${rec.date||'-'}</td></tr>`;
+                });
+                html += '</tbody></table>';
+                modalBody.innerHTML = html;
+            }
+
+            function fullRefresh() {
+                if (!diffData.length) return;
+                currentFilteredDiff = filterDiffData(diffData).slice().sort((a,b) => (a.date||'').localeCompare(b.date||''));
+                detailCurrentOffset = 0;
+                updateStatsBoard();
+                renderTrendChart();
+                renderPersonStackChart();
+                renderIssueTypeChart();
+                renderObjWarehouseRanking();
+                buildPersonList();
+                renderObjectiveRankings();
+                renderDetailTable();
+                if (trendChart) trendChart.resize();
+                if (personStackChart) personStackChart.resize();
+                if (issueTypeChart) issueTypeChart.resize();
+            }
+
+            function setProblemType(type) {
+                currentProblemType = type;
+                document.querySelectorAll('#problemTypeSwitch .switch-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+                renderObjectiveRankings();
+            }
+
+            // ---------- 数据加载（线上 / 上传） ----------
+            function processParsedData(summaryRows, diffRows) {
+                if (summaryRows.length && diffRows.length) {
+                    setDataFromParsed(summaryRows, diffRows);
+                    updateAllFilters();
+                    resetAllFilters();
+                    fullRefresh();
+                    return true;
+                }
+                return false;
+            }
+
+            function updateAllFilters() {
+                warehouseFilter.innerHTML = '<option value="__ALL__">全部中心仓</option>' + Array.from(warehouseSet).sort().map(w => `<option value="${w.replace(/"/g,'&quot;')}">${w}</option>`).join('');
+                updatePersonFilterOptions();
+                issueTypeFilter.innerHTML = '<option value="__ALL__">全部问题类型</option>' + Array.from(allIssueTypes).sort().map(t => `<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`).join('');
+                judgedIssueTypeFilter.innerHTML = '<option value="__ALL__">全部</option>' + Array.from(allJudgedIssueTypes).sort().map(t => `<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`).join('');
+            }
+
+            function updatePersonFilterOptions() {
+                const base = warehouseFilter.value !== '__ALL__' ? new Set(diffData.filter(d => d.warehouse === warehouseFilter.value).map(d => d.person)) : allPersonSet;
+                const kw = personKeyword.value.trim().toLowerCase();
+                const matched = kw ? Array.from(base).filter(p => p.toLowerCase().includes(kw)) : Array.from(base);
+                matched.sort();
+                personFilter.innerHTML = '<option value="__ALL__">全部质检人员</option>' + matched.map(p => `<option value="${p.replace(/"/g,'&quot;')}">${p}</option>`).join('');
+                if (personFilter.value !== '__ALL__' && !matched.includes(personFilter.value)) personFilter.value = '__ALL__';
+            }
+
+            function resetAllFilters() {
+                warehouseFilter.value = '__ALL__';
+                startDateFilter.value = ''; endDateFilter.value = '';
+                personKeyword.value = '';
+                updatePersonFilterOptions();
+                personFilter.value = '__ALL__';
+                subjObjFilter.value = 'ALL';
+                issueTypeFilter.value = '__ALL__';
+                judgedIssueTypeFilter.value = '__ALL__';
+                fullRefresh();
+            }
+
+            // 线上加载特定模式
+            async function loadDataByMode(mode) {
+                const [sumFile, diffFile] = FILE_MAP[mode];
+                loadWeeklyBtn.classList.toggle('active', mode === 'weekly');
+                loadMonthlyBtn.classList.toggle('active', mode === 'monthly');
+                const modeLabel = mode === 'weekly' ? '周度' : '月度';
+                showToast(`⏳ 正在加载${modeLabel}数据...`);
+                try {
+                    const [sumRes, diffRes] = await Promise.all([fetch(sumFile), fetch(diffFile)]);
+                    if (!sumRes.ok || !diffRes.ok) throw new Error('文件不存在或无法访问，请确认已上传对应文件');
+                    const sumWb = XLSX.read(await sumRes.arrayBuffer(), { type: 'array' });
+                    const diffWb = XLSX.read(await diffRes.arrayBuffer(), { type: 'array' });
+                    let sumRows = [], diffRows = [];
+                    for (let s of sumWb.SheetNames) { const d = XLSX.utils.sheet_to_json(sumWb.Sheets[s]); if (d.length) { sumRows = d; break; } }
+                    for (let s of diffWb.SheetNames) { const d = XLSX.utils.sheet_to_json(diffWb.Sheets[s]); if (d.length) { diffRows = d; break; } }
+                    if (!sumRows.length || !diffRows.length) throw new Error('工作表无数据');
+                    const parsedSum = [], parsedDiff = [];
+                    sumRows.forEach(r => { const p = parseSummaryRow(r); if (p) parsedSum.push(p); });
+                    diffRows.forEach(r => { const p = parseDiffRow(r); if (p) parsedDiff.push(p); });
+                    if (!processParsedData(parsedSum, parsedDiff)) throw new Error('解析后无有效数据，请检查列名是否符合模板');
+                    showToast(`✅ ${modeLabel}数据加载成功`);
+                } catch (err) {
+                    showToast('加载失败：' + err.message, true);
+                }
+            }
+
+            // 上传处理
+            function processExcelFiles(files) {
+                if (files.length !== 2) { showToast('请同时选择两个文件（汇总表 + 差异明细表）', true); return; }
+                let summaryRows = [], diffRows = [], errors = [], processed = 0;
+                for (let file of files) {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        try {
+                            const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+                            let sheetRows = []; for (let s of wb.SheetNames) { const d = XLSX.utils.sheet_to_json(wb.Sheets[s]); if (d.length) { sheetRows = d; break; } }
+                            if (!sheetRows.length) throw new Error('工作表无数据');
+                            const firstRow = sheetRows[0];
+                            const isSummary = ('站点名称' in firstRow && ('总抽检量' in firstRow || '大盘抽检设备数量' in firstRow));
+                            const isDiff = ('原操作人名称' in firstRow && '主客观问题分类' in firstRow);
+                            if (isSummary) {
+                                const p = []; sheetRows.forEach(r => { const pr = parseSummaryRow(r); if (pr && pr.totalChecks>0) p.push(pr); });
+                                if (p.length) summaryRows = p; else errors.push(`汇总表解析失败: ${Object.keys(firstRow).join(',')}`);
+                            } else if (isDiff) {
+                                const p = []; sheetRows.forEach(r => { const pr = parseDiffRow(r); if (pr) p.push(pr); });
+                                if (p.length) diffRows = p; else errors.push(`差异表解析失败: ${Object.keys(firstRow).join(',')}`);
+                            } else { errors.push(`无法识别文件类型: ${Object.keys(firstRow).join(',')}`); }
+                        } catch(e) { errors.push(`解析 ${file.name} 失败: ${e.message}`); } finally {
+                            processed++;
+                            if (processed === files.length) {
+                                if (errors.length) { showToast('解析错误', true, errors.join('<br>')); combinedFileInput.value = ''; return; }
+                                if (!processParsedData(summaryRows, diffRows)) showToast('缺少有效数据', true, `汇总:${summaryRows.length}, 差异:${diffRows.length}`);
+                                else showToast(`✅ 上传成功！汇总站点:${summaryRows.length}, 差异记录:${diffRows.length}`);
+                                combinedFileInput.value = '';
+                            }
+                        }
+                    };
+                    reader.onerror = () => { errors.push(`读取失败 ${file.name}`); processed++; if (processed === files.length) { showToast('读取失败', true, errors.join('<br>')); combinedFileInput.value = ''; } };
+                    reader.readAsArrayBuffer(file);
+                }
+            }
+
+            // ---------- 事件绑定 ----------
+            function safeOn(id, evt, fn) { const el = document.getElementById(id); if (el) el.addEventListener(evt, fn); }
+
+            // 模式按钮
+            if (loadWeeklyBtn) loadWeeklyBtn.addEventListener('click', () => loadDataByMode('weekly'));
+            if (loadMonthlyBtn) loadMonthlyBtn.addEventListener('click', () => loadDataByMode('monthly'));
+
+            // 上传
+            if (uploadCombinedBtn) uploadCombinedBtn.addEventListener('click', () => combinedFileInput.click());
+            if (combinedFileInput) combinedFileInput.addEventListener('change', e => { if (e.target.files.length) processExcelFiles(e.target.files); });
+
+            // 弹窗关闭
+            if (closeModalSpan) closeModalSpan.addEventListener('click', () => modal.classList.remove('visible'));
+            window.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('visible'); });
+            safeOn('modalSubjObjFilter', 'change', renderModalTable);
+            safeOn('modalIssueTypeFilter', 'change', renderModalTable);
+            safeOn('modalJudgedIssueTypeFilter', 'change', renderModalTable);
+            safeOn('modalResetFilter', 'click', () => {
+                modalSubjObjFilter.value = 'ALL'; modalIssueTypeFilter.value = '__ALL__'; modalJudgedIssueTypeFilter.value = '__ALL__';
+                renderModalTable();
+            });
+
+            // 表格点击下钻
+            safeOn('issueRankTable', 'click', e => {
+                const tr = e.target.closest('tr'); if (tr?.dataset.level3) {
+                    const filtered = getFilteredForProblemType().filter(d => normalizeLevel3(d.level3) === tr.dataset.level3);
+                    openDetailWithData(filtered, `三级项【${tr.dataset.level3}】明细 (${filtered.length}条)`);
+                }
+            });
+            safeOn('modelRankTable', 'click', e => {
+                const tr = e.target.closest('tr'); if (tr?.dataset.model) {
+                    const filtered = getFilteredForProblemType().filter(d => d.model === tr.dataset.model);
+                    openDetailWithData(filtered, `型号【${tr.dataset.model}】明细 (${filtered.length}条)`);
+                }
+            });
+            safeOn('personTable', 'click', e => {
+                const tr = e.target.closest('tr'); if (tr?.dataset.person) {
+                    const filtered = currentFilteredDiff.filter(d => d.person === tr.dataset.person);
+                    openDetailWithData(filtered, `质检人员【${tr.dataset.person}】明细 (${filtered.length}条)`);
+                }
+            });
+
+            // 问题排行切换
+            if (problemTypeSwitch) problemTypeSwitch.addEventListener('click', e => {
+                const btn = e.target.closest('.switch-btn'); if (btn?.dataset.type) setProblemType(btn.dataset.type);
+            });
+
+            if (personLoadMoreBtn) personLoadMoreBtn.addEventListener('click', loadMorePersons);
+            safeOn('objRankTable', 'click', e => {
+                const tr = e.target.closest('tr'); if (tr?.dataset?.site) {
+                    warehouseFilter.value = tr.dataset.site;
+                    personKeyword.value = ''; updatePersonFilterOptions(); personFilter.value = '__ALL__';
+                    fullRefresh();
+                }
+            });
+            if (resetViewHint) resetViewHint.addEventListener('click', resetAllFilters);
+            if (resetBtn) resetBtn.addEventListener('click', resetAllFilters);
+            if (warehouseFilter) warehouseFilter.addEventListener('change', () => {
+                personKeyword.value = ''; updatePersonFilterOptions(); personFilter.value = '__ALL__'; fullRefresh();
+            });
+            if (startDateFilter) startDateFilter.addEventListener('change', fullRefresh);
+            if (endDateFilter) endDateFilter.addEventListener('change', fullRefresh);
+
+            let kwTimer;
+            if (personKeyword) personKeyword.addEventListener('input', () => {
+                clearTimeout(kwTimer); kwTimer = setTimeout(() => { updatePersonFilterOptions(); personFilter.value = '__ALL__'; fullRefresh(); }, 300);
+            });
+            if (personFilter) personFilter.addEventListener('change', fullRefresh);
+            if (subjObjFilter) subjObjFilter.addEventListener('change', fullRefresh);
+            if (issueTypeFilter) issueTypeFilter.addEventListener('change', fullRefresh);
+            if (judgedIssueTypeFilter) judgedIssueTypeFilter.addEventListener('change', fullRefresh);
+            if (loadMoreBtn) loadMoreBtn.addEventListener('click', () => { detailCurrentOffset += detailDisplayLimit; renderDetailTable(); });
+
+            window.addEventListener('resize', () => {
+                if (trendChart) trendChart.resize();
+                if (personStackChart) personStackChart.resize();
+                if (issueTypeChart) issueTypeChart.resize();
+            });
+
+            // 指标卡片点击
+            if (statsArea) statsArea.addEventListener('click', e => {
+                const card = e.target.closest('.stats-item'); if (!card) return;
+                const type = card.dataset.type; let records = [];
+                if (type === 'total_diff' || type === 'unique_all') records = currentFilteredDiff;
+                else if (type === 'obj_diff' || type === 'unique_obj') records = currentFilteredDiff.filter(d => isObjective(d.category));
+                else if (type === 'subj_diff' || type === 'unique_subj') records = currentFilteredDiff.filter(d => isSubjective(d.category));
+                else if (type === 'exec_diff') records = currentFilteredDiff.filter(d => isObjective(d.category) && isExecutionIssue(d.judgedIssueType));
+                if (records.length) openDetailWithData(records, `指标明细 (${records.length}条)`);
+                else showToast('暂无数据');
+            });
+
+            // 主题切换
+            const isDark = localStorage.getItem('darkMode') === 'true';
+            if (isDark) { document.body.classList.add('dark'); themeBtn.innerHTML = '☀️ 日间模式'; } else { themeBtn.innerHTML = '🌙 夜间模式'; }
+            if (themeBtn) themeBtn.addEventListener('click', () => {
+                const dark = document.body.classList.toggle('dark');
+                localStorage.setItem('darkMode', dark);
+                themeBtn.innerHTML = dark ? '☀️ 日间模式' : '🌙 夜间模式';
+                if (diffData.length) fullRefresh();
+                else { if (trendChart) trendChart.resize(); if (personStackChart) personStackChart.resize(); if (issueTypeChart) issueTypeChart.resize(); }
+            });
+
+            // 自动加载周度数据
+            loadDataByMode('weekly');
+        }
+
+        // 启动入口
+        if (sessionStorage.getItem('authenticated') === 'true') {
+            document.getElementById('passwordOverlay').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            if (!window._dashboardStarted) { window._dashboardStarted = true; initDashboard(); }
+        }
+    })();
+    </script>
+</body>
+</html>
